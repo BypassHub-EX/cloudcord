@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../assets/cloudcord-logo.png" width="420" alt="CloudCord">
+  <img src="assets/cloudcord-logo.png" width="420" alt="CloudCord">
 </p>
 
 <h1 align="center">CloudCord</h1>
@@ -12,7 +12,7 @@
   <a href="https://github.com/BypassHub-EX/cloudcord/actions/workflows/cloudcord.yml">
     <img alt="Build" src="https://img.shields.io/github/actions/workflow/status/BypassHub-EX/cloudcord/cloudcord.yml?branch=main&label=build&logo=github">
   </a>
-  <a href="../runtime/LICENSE">
+  <a href="runtime/LICENSE">
     <img alt="License" src="https://img.shields.io/badge/license-BSD--3--Clause-blue">
   </a>
   <img alt="Platform" src="https://img.shields.io/badge/platform-iOS-lightgrey?logo=apple">
@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="../assets/cloudcord-favicon.png" width="88" alt="CloudCord icon">
+  <img src="assets/cloudcord-favicon.png" width="88" alt="CloudCord icon">
 </p>
 
 ## What this is
