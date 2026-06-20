@@ -1,104 +1,58 @@
 name: Build CloudCord Runtime
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/cloudcord.yml
-      - cloudcord-build.json
+workflow_dispatch:
+push:
+branches:
+- main
+paths:
+- .github/workflows/cloudcord.yml
 
 permissions:
-  contents: write
+contents: write
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+build:
+runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout CloudCord repo
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Clone Kettu runtime source
-        run: |
-          set -e
-          rm -rf _kettu_build
-          git clone --depth=1 https://codeberg.org/cocobo1/Kettu.git _kettu_build
-
-      - name: Rebrand Kettu to CloudCord
-        run: |
-          set -e
-          cd _kettu_build
-          python3 - <<'PY'
-          from pathlib import Path
-
-          exts = {".ts", ".tsx", ".js", ".jsx", ".json", ".mjs", ".md"}
-          replacements = {
-              "KettuTweak": "CloudCord",
-              "Kettu": "CloudCord",
-              "kettu.js": "cloudcord.js",
-              "kettu.min.js": "cloudcord.min.js"
-          }
-
-          for path in Path(".").rglob("*"):
-              if not path.is_file() or path.suffix not in exts:
-                  continue
-
-              text = path.read_text(encoding="utf-8", errors="ignore")
-              original = text
-
-              for old, new in replacements.items():
-                  text = text.replace(old, new)
-
-              if text != original:
-                  path.write_text(text, encoding="utf-8")
-          PY
-
-      - name: Install dependencies
-        run: |
-          set -e
-          cd _kettu_build
-          bun install
-
-      - name: Build CloudCord runtime
-        run: |
-          set -e
-          cd _kettu_build
-          bun run build -- --build-minify
-
-          python3 - <<'PY'
-          from pathlib import Path
-
-          for name in ["dist/kettu.js", "dist/kettu.min.js"]:
-              p = Path(name)
-              text = p.read_text(encoding="utf-8", errors="ignore")
-              text = text.replace("KettuTweak", "CloudCord").replace("Kettu", "CloudCord")
-              p.write_text(text, encoding="utf-8")
-          PY
-
-          cp dist/kettu.js ../cloudcord.js
-          cp dist/kettu.min.js ../cc.js
-          cp dist/kettu.min.js ../cloudcord.min.js
-
-      - name: Commit built runtime
-        run: |
-          set -e
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add cc.js cloudcord.js cloudcord.min.js
-          git commit -m "Build CloudCord runtime" || exit 0
-          git push
-
-      - name: Upload runtime artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: cloudcord-runtime
-          path: |
-            cc.js
-            cloudcord.js
-            cloudcord.min.js
+steps:
+  - name: Checkout CloudCord repo
+    uses: actions/checkout@v4
+  - name: Download compiled Kettu runtime
+    run: |
+      set -e
+      curl -fL --retry 3 -o cc.js "https://codeberg.org/cocobo1/Kettu/raw/branch/dist/kettu.min.js"
+  - name: Rebrand runtime to CloudCord
+    run: |
+      set -e
+      python3 - <<'PY'
+      from pathlib import Path
+      path = Path("cc.js")
+      text = path.read_text(encoding="utf-8", errors="ignore")
+      replacements = {
+          "KettuTweak": "CloudCord",
+          "Kettu": "CloudCord",
+          "kettu": "cloudcord"
+      }
+      for old, new in replacements.items():
+          text = text.replace(old, new)
+      path.write_text(text, encoding="utf-8")
+      Path("cloudcord.js").write_text(text, encoding="utf-8")
+      Path("cloudcord.min.js").write_text(text, encoding="utf-8")
+      PY
+  - name: Commit CloudCord runtime
+    run: |
+      set -e
+      git config user.name "github-actions[bot]"
+      git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      git add cc.js cloudcord.js cloudcord.min.js
+      git commit -m "Build CloudCord runtime" || exit 0
+      git push
+  - name: Upload runtime artifact
+    uses: actions/upload-artifact@v4
+    with:
+      name: cloudcord-runtime
+      path: |
+        cc.js
+        cloudcord.js
+        cloudcord.min.js
