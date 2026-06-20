@@ -1,58 +1,45 @@
 name: Build CloudCord Runtime
 
-on:
-workflow_dispatch:
-push:
-branches:
-- main
-paths:
-- .github/workflows/cloudcord.yml
+"on":
+  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
-contents: write
+  contents: write
 
 jobs:
-build:
-runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-steps:
-  - name: Checkout CloudCord repo
-    uses: actions/checkout@v4
-  - name: Download compiled Kettu runtime
-    run: |
-      set -e
-      curl -fL --retry 3 -o cc.js "https://codeberg.org/cocobo1/Kettu/raw/branch/dist/kettu.min.js"
-  - name: Rebrand runtime to CloudCord
-    run: |
-      set -e
-      python3 - <<'PY'
-      from pathlib import Path
-      path = Path("cc.js")
-      text = path.read_text(encoding="utf-8", errors="ignore")
-      replacements = {
-          "KettuTweak": "CloudCord",
-          "Kettu": "CloudCord",
-          "kettu": "cloudcord"
-      }
-      for old, new in replacements.items():
-          text = text.replace(old, new)
-      path.write_text(text, encoding="utf-8")
-      Path("cloudcord.js").write_text(text, encoding="utf-8")
-      Path("cloudcord.min.js").write_text(text, encoding="utf-8")
-      PY
-  - name: Commit CloudCord runtime
-    run: |
-      set -e
-      git config user.name "github-actions[bot]"
-      git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      git add cc.js cloudcord.js cloudcord.min.js
-      git commit -m "Build CloudCord runtime" || exit 0
-      git push
-  - name: Upload runtime artifact
-    uses: actions/upload-artifact@v4
-    with:
-      name: cloudcord-runtime
-      path: |
-        cc.js
-        cloudcord.js
-        cloudcord.min.js
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download compiled Kettu runtime
+        run: |
+          curl -fL --retry 3 -o cc.js "https://codeberg.org/cocobo1/Kettu/raw/branch/dist/kettu.min.js"
+
+      - name: Rebrand runtime to CloudCord
+        run: |
+          perl -0pi -e 's/KettuTweak/CloudCord/g; s/Kettu/CloudCord/g; s/kettu/cloudcord/g' cc.js
+          cp cc.js cloudcord.js
+          cp cc.js cloudcord.min.js
+
+      - name: Commit runtime files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cc.js cloudcord.js cloudcord.min.js
+          git commit -m "Build CloudCord runtime" || exit 0
+          git push
+
+      - name: Upload runtime artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudcord-runtime
+          path: |
+            cc.js
+            cloudcord.js
+            cloudcord.min.js
