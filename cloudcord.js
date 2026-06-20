@@ -2191,8 +2191,8 @@
   var constants_exports = {};
   __export(constants_exports, {
     BUNNY_PROXY_PREFIX: () => BUNNY_PROXY_PREFIX,
-    CODEBERG: () => CODEBERG2,
-    DISCORD_SERVER: () => DISCORD_SERVER2,
+    CODEBERG: () => CODEBERG,
+    DISCORD_SERVER: () => DISCORD_SERVER,
     GITHUB: () => GITHUB,
     HTTP_REGEX: () => HTTP_REGEX,
     HTTP_REGEX_MULTI: () => HTTP_REGEX_MULTI,
@@ -2206,14 +2206,14 @@
     VD_PROXY_PREFIX: () => VD_PROXY_PREFIX,
     VD_THEMES_CHANNEL_ID: () => VD_THEMES_CHANNEL_ID
   });
-  var DISCORD_SERVER2, CODEBERG2, GITHUB, HTTP_REGEX, HTTP_REGEX_MULTI, BUNNY_PROXY_PREFIX, NEXPID_PLUGINS_REPO_URL, OFFICIAL_PLUGINS_REPO_URL, VD_PROXY_PREFIX, VD_DISCORD_SERVER_ID, VD_PLUGINS_CHANNEL_ID, VD_THEMES_CHANNEL_ID, KETTU_DISCORD_SERVER_ID, KETTU_PLUGINS_CHANNEL_ID, KETTU_THEMES_CHANNEL_ID;
+  var DISCORD_SERVER, CODEBERG, GITHUB, HTTP_REGEX, HTTP_REGEX_MULTI, BUNNY_PROXY_PREFIX, NEXPID_PLUGINS_REPO_URL, OFFICIAL_PLUGINS_REPO_URL, VD_PROXY_PREFIX, VD_DISCORD_SERVER_ID, VD_PLUGINS_CHANNEL_ID, VD_THEMES_CHANNEL_ID, KETTU_DISCORD_SERVER_ID, KETTU_PLUGINS_CHANNEL_ID, KETTU_THEMES_CHANNEL_ID;
   var init_constants = __esm({
     "src/lib/utils/constants.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
-      DISCORD_SERVER2 = "";
-      CODEBERG2 = "https://github.com/BypassHub-EX/cloudcord";
+      DISCORD_SERVER = "https://discord.gg/5naTPJYemX";
+      CODEBERG = "";
       GITHUB = "https://github.com/BypassHub-EX/cloudcord";
       HTTP_REGEX = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&/=]*)$/;
       HTTP_REGEX_MULTI = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
@@ -4552,7 +4552,7 @@
         DEVELOPER_SETTINGS: "Developer Settings",
         DISABLE_THEME: "Disable Theme",
         DISABLE_UPDATES: "Disable Updates",
-        DISCORD_SERVER: "",
+        DISCORD_SERVER: "Discord Server",
         DONE: "Done",
         ENABLE_EVAL_COMMAND: "Enable /eval command",
         ENABLE_EVAL_COMMAND_DESC: "Evaluate JavaScript directly from a command. Be cautious when using this command as it may pose a security risk. Make sure to know what you are doing.",
@@ -6611,16 +6611,6 @@
                   source: findAssetId("Discord")
                 }),
                 onPress: () => import_react_native17.Linking.openURL(DISCORD_SERVER)
-              }),
-              /* @__PURE__ */ jsx(TableRow, {
-                arrow: true,
-                label: Strings.CODEBERG,
-                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-                  source: {
-                    uri: CodebergIcon
-                  }
-                }),
-                onPress: () => import_react_native17.Linking.openURL(CODEBERG)
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
