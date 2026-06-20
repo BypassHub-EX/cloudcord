@@ -37,16 +37,17 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
+          import json
           import re
 
           replacements = {
               "KettuTweak": "CloudCord",
               "Kettu Enhancements": "CloudCord Enhancements",
               "Kettu": "CloudCord",
-              "https://github.com/C0C0B01/CloudCord": "https://github.com/BypassHub-EX/cloudcord",
-              "https://github.com/C0C0B01/Kettu": "https://github.com/BypassHub-EX/cloudcord",
-              "https://codeberg.org/cocobo1/CloudCord": "https://github.com/BypassHub-EX/cloudcord",
-              "https://codeberg.org/cocobo1/Kettu": "https://github.com/BypassHub-EX/cloudcord",
+              "https://github.com/C0C0B01/CloudCord": "https://github.com/xohus/cloudcord",
+              "https://github.com/C0C0B01/Kettu": "https://github.com/xohus/cloudcord",
+              "https://codeberg.org/cocobo1/CloudCord": "https://github.com/xohus/cloudcord",
+              "https://codeberg.org/cocobo1/Kettu": "https://github.com/xohus/cloudcord",
               "Load Kettu without loading add-ons": "Load CloudCord without loading add-ons",
               "Failed to load Kettu!": "Failed to load CloudCord!"
           }
@@ -69,6 +70,7 @@ jobs:
           constants = Path("src/lib/utils/constants.ts")
           if constants.exists():
               text = constants.read_text(encoding="utf-8", errors="ignore")
+              removed_symbol = "CODE" + "BERG"
 
               text = re.sub(
                   r'export const DISCORD_SERVER = ".*?";',
@@ -77,16 +79,30 @@ jobs:
               )
 
               text = re.sub(
-                  r'export const CODEBERG = ".*?";',
-                  'export const CODEBERG = "";',
+                  rf'\n?export const {removed_symbol} = ".*?";\n?',
+                  '\n',
                   text
               )
 
               text = re.sub(
                   r'export const GITHUB = ".*?";',
-                  'export const GITHUB = "https://github.com/BypassHub-EX/cloudcord";',
+                  'export const GITHUB = "https://github.com/xohus/cloudcord";',
                   text
               )
+
+              if re.search(r'export const CLOUD_SYNC = ".*?";', text):
+                  text = re.sub(
+                      r'export const CLOUD_SYNC = ".*?";',
+                      'export const CLOUD_SYNC = "https://revenge.nexpid.xyz/cloud-sync";',
+                      text
+                  )
+              elif 'export const GITHUB = "https://github.com/xohus/cloudcord";' in text:
+                  text = text.replace(
+                      'export const GITHUB = "https://github.com/xohus/cloudcord";',
+                      'export const GITHUB = "https://github.com/xohus/cloudcord";\nexport const CLOUD_SYNC = "https://revenge.nexpid.xyz/cloud-sync";'
+                  )
+              else:
+                  text = text.rstrip() + '\nexport const CLOUD_SYNC = "https://revenge.nexpid.xyz/cloud-sync";\n'
 
               constants.write_text(text, encoding="utf-8")
 
@@ -96,8 +112,11 @@ jobs:
 
               text = text.replace('"PUPU": "Kettu"', '"PUPU": "CloudCord"')
               text = text.replace('"PUPU_URL": "Kettu URL"', '"PUPU_URL": "CloudCord URL"')
-              text = text.replace('"CODEBERG": "Codeberg"', '"CODEBERG": ""')
-              text = text.replace('"URL_PLACEHOLDER": "https://codeberg.org/cocobo1/Kettu"', '"URL_PLACEHOLDER": "https://github.com/BypassHub-EX/cloudcord"')
+              text = text.replace('"URL_PLACEHOLDER": "https://codeberg.org/cocobo1/Kettu"', '"URL_PLACEHOLDER": "https://github.com/xohus/cloudcord"')
+
+              data = json.loads(text)
+              data.pop("CODE" + "BERG", None)
+              text = json.dumps(data, ensure_ascii=False, indent=4) + "\n"
 
               strings.write_text(text, encoding="utf-8")
 
@@ -105,43 +124,48 @@ jobs:
           if general.exists():
               text = general.read_text(encoding="utf-8", errors="ignore")
 
-              text = text.replace(
-                  'import { DISCORD_SERVER, GITHUB, CODEBERG } from "@lib/utils/constants";',
-                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
-              )
-
-              text = text.replace(
-                  'import { GITHUB, CODEBERG } from "@lib/utils/constants";',
-                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
-              )
-
-              text = text.replace(
-                  'import { GITHUB } from "@lib/utils/constants";',
-                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
-              )
-
-              text = text.replace(
-                  'import CodebergIcon from "@assets/icons/codeberg-logo_icon_white.png";\n',
-                  ''
-              )
-
               text = re.sub(
-                  r'\n\s*<TableRow\s+arrow=\{true\}\s+label=\{Strings\.CODEBERG\}[\s\S]*?onPress=\{\(\) => Linking\.openURL\(CODEBERG\)\}\s*/>',
-                  '',
-                  text
+                  r'import\s+\{[^}]*\}\s+from "@lib/utils/constants";',
+                  'import { DISCORD_SERVER, GITHUB, CLOUD_SYNC } from "@lib/utils/constants";',
+                  text,
+                  count=1
               )
 
-              if "Linking.openURL(DISCORD_SERVER)" not in text:
-                  text = text.replace(
-                      '<TableRowGroup title={Strings.LINKS}>',
-                      '''<TableRowGroup title={Strings.LINKS}>
+              text = re.sub(r'import\s+\w+\s+from "@assets/icons/codeberg-logo_icon_white\.png";\n', '', text)
+
+              links_rows = '''<TableRowGroup title={Strings.LINKS}>
+                    <TableRow
+                        arrow={true}
+                        label={"Cloud Sync"}
+                        icon={<TableRow.Icon source={findAssetId("img_account_sync_github_white")!} />}
+                        onPress={() => Linking.openURL(CLOUD_SYNC)}
+                    />
                     <TableRow
                         arrow={true}
                         label={Strings.DISCORD_SERVER}
                         icon={<TableRow.Icon source={findAssetId("Discord")!} />}
                         onPress={() => Linking.openURL(DISCORD_SERVER)}
+                    />
+                    <TableRow
+                        arrow={true}
+                        label={Strings.GITHUB}
+                        icon={<TableRow.Icon source={findAssetId("img_account_sync_github_white")!} />}
+                        onPress={() => Linking.openURL(GITHUB)}
                     />'''
-                  )
+
+              text, links_count = re.subn(
+                  r'<TableRowGroup title=\{Strings\.LINKS\}>([\s\S]*?)</TableRowGroup>',
+                  links_rows + '\n                </TableRowGroup>',
+                  text,
+                  count=1
+              )
+              if links_count != 1:
+                  raise RuntimeError("Could not rewrite CloudCord settings links group")
+
+              forbidden = ("Code" + "bergIcon", "CODE" + "BERG", "Linking.openURL(" + "CODE" + "BERG)")
+              found = [token for token in forbidden if token in text]
+              if found:
+                  raise RuntimeError(f"CloudCord settings still reference removed Codeberg symbols: {', '.join(found)}")
 
               general.write_text(text, encoding="utf-8")
 
@@ -150,6 +174,16 @@ jobs:
               text = build.read_text(encoding="utf-8", errors="ignore")
               text = text.replace('version: `"v1.4.2"`', 'version: `"v0.1"`')
               build.write_text(text, encoding="utf-8")
+
+          forbidden = ("Code" + "bergIcon", "CODE" + "BERG", "Linking.openURL(" + "CODE" + "BERG)")
+          for path in Path("src").rglob("*"):
+              if not path.is_file() or path.suffix not in exts:
+                  continue
+
+              text = path.read_text(encoding="utf-8", errors="ignore")
+              found = [token for token in forbidden if token in text]
+              if found:
+                  raise RuntimeError(f"{path} still references removed Codeberg symbols: {', '.join(found)}")
           PY
 
       - name: Install dependencies
@@ -168,6 +202,12 @@ jobs:
           cp dist/kettu.js ../dist/cloudcord.js
           cp dist/kettu.min.js ../dist/cc.js
           cp dist/kettu.min.js ../dist/cloudcord.min.js
+
+          removed_pattern='Code''bergIcon|CODE''BERG|Linking\.openURL\(CODE''BERG\)'
+          if grep -R -E "$removed_pattern" ../dist; then
+            echo "Generated CloudCord runtime still references removed Codeberg symbols."
+            exit 1
+          fi
 
       - name: Commit runtime files
         run: |
