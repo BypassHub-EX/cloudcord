@@ -37,6 +37,7 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           replacements = {
               "KettuTweak": "CloudCord",
@@ -46,82 +47,102 @@ jobs:
               "https://github.com/C0C0B01/Kettu": "https://github.com/BypassHub-EX/cloudcord",
               "https://codeberg.org/cocobo1/CloudCord": "https://github.com/BypassHub-EX/cloudcord",
               "https://codeberg.org/cocobo1/Kettu": "https://github.com/BypassHub-EX/cloudcord",
-              "Load CloudCord without loading add-ons": "Load CloudCord without loading add-ons",
               "Load Kettu without loading add-ons": "Load CloudCord without loading add-ons",
-              "Failed to load CloudCord!": "Failed to load CloudCord!",
               "Failed to load Kettu!": "Failed to load CloudCord!"
           }
 
           exts = {".ts", ".tsx", ".js", ".jsx", ".json", ".mjs", ".md"}
+
           for path in Path(".").rglob("*"):
               if not path.is_file() or path.suffix not in exts:
                   continue
+
               text = path.read_text(encoding="utf-8", errors="ignore")
               original = text
+
               for old, new in replacements.items():
                   text = text.replace(old, new)
+
               if text != original:
                   path.write_text(text, encoding="utf-8")
 
           constants = Path("src/lib/utils/constants.ts")
           if constants.exists():
               text = constants.read_text(encoding="utf-8", errors="ignore")
-              text = text.replace('export const DISCORD_SERVER = "https://discord.gg/6cN7wKa8gp";', 'export const DISCORD_SERVER = "";')
-              text = text.replace('export const CODEBERG = "https://codeberg.org/cocobo1/CloudCord";', 'export const CODEBERG = "";')
-              text = text.replace('export const CODEBERG = "https://codeberg.org/cocobo1/Kettu";', 'export const CODEBERG = "";')
-              text = text.replace('export const GITHUB = "https://github.com/C0C0B01/CloudCord";', 'export const GITHUB = "https://github.com/BypassHub-EX/cloudcord";')
-              text = text.replace('export const GITHUB = "https://github.com/C0C0B01/Kettu";', 'export const GITHUB = "https://github.com/BypassHub-EX/cloudcord";')
+
+              text = re.sub(
+                  r'export const DISCORD_SERVER = ".*?";',
+                  'export const DISCORD_SERVER = "https://discord.gg/5naTPJYemX";',
+                  text
+              )
+
+              text = re.sub(
+                  r'export const CODEBERG = ".*?";',
+                  'export const CODEBERG = "";',
+                  text
+              )
+
+              text = re.sub(
+                  r'export const GITHUB = ".*?";',
+                  'export const GITHUB = "https://github.com/BypassHub-EX/cloudcord";',
+                  text
+              )
+
               constants.write_text(text, encoding="utf-8")
 
           strings = Path("src/core/i18n/default.json")
           if strings.exists():
               text = strings.read_text(encoding="utf-8", errors="ignore")
-              text = text.replace('"PUPU": "CloudCord"', '"PUPU": "CloudCord"')
+
               text = text.replace('"PUPU": "Kettu"', '"PUPU": "CloudCord"')
               text = text.replace('"PUPU_URL": "Kettu URL"', '"PUPU_URL": "CloudCord URL"')
               text = text.replace('"CODEBERG": "Codeberg"', '"CODEBERG": ""')
-              text = text.replace('"DISCORD_SERVER": "Discord Server"', '"DISCORD_SERVER": ""')
-              text = text.replace('"URL_PLACEHOLDER": "https://github.com/BypassHub-EX/cloudcord"', '"URL_PLACEHOLDER": "https://github.com/BypassHub-EX/cloudcord"')
               text = text.replace('"URL_PLACEHOLDER": "https://codeberg.org/cocobo1/Kettu"', '"URL_PLACEHOLDER": "https://github.com/BypassHub-EX/cloudcord"')
+
               strings.write_text(text, encoding="utf-8")
 
           general = Path("src/core/ui/settings/pages/General/index.tsx")
           if general.exists():
               text = general.read_text(encoding="utf-8", errors="ignore")
-              text = text.replace('import { DISCORD_SERVER, GITHUB, CODEBERG } from "@lib/utils/constants";', 'import { GITHUB } from "@lib/utils/constants";')
-              text = text.replace('import CodebergIcon from "@assets/icons/codeberg-logo_icon_white.png";\n', '')
 
-              old = '''<TableRowGroup title={Strings.LINKS}>
+              text = text.replace(
+                  'import { DISCORD_SERVER, GITHUB, CODEBERG } from "@lib/utils/constants";',
+                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
+              )
+
+              text = text.replace(
+                  'import { GITHUB, CODEBERG } from "@lib/utils/constants";',
+                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
+              )
+
+              text = text.replace(
+                  'import { GITHUB } from "@lib/utils/constants";',
+                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
+              )
+
+              text = text.replace(
+                  'import CodebergIcon from "@assets/icons/codeberg-logo_icon_white.png";\n',
+                  ''
+              )
+
+              text = re.sub(
+                  r'\n\s*<TableRow\s+arrow=\{true\}\s+label=\{Strings\.CODEBERG\}[\s\S]*?onPress=\{\(\) => Linking\.openURL\(CODEBERG\)\}\s*/>',
+                  '',
+                  text
+              )
+
+              if "Linking.openURL(DISCORD_SERVER)" not in text:
+                  text = text.replace(
+                      '<TableRowGroup title={Strings.LINKS}>',
+                      '''<TableRowGroup title={Strings.LINKS}>
                     <TableRow
                         arrow={true}
                         label={Strings.DISCORD_SERVER}
                         icon={<TableRow.Icon source={findAssetId("Discord")!} />}
                         onPress={() => Linking.openURL(DISCORD_SERVER)}
-                    />
-                    <TableRow
-                        arrow={true}
-                        label={Strings.CODEBERG}
-                        icon={<TableRow.Icon source={{ uri: CodebergIcon}} />}
-                        onPress={() => Linking.openURL(CODEBERG)}
-                    />
-                    <TableRow
-                        arrow={true}
-                        label={Strings.GITHUB}
-                        icon={<TableRow.Icon source={findAssetId("img_account_sync_github_white")!} />}
-                        onPress={() => Linking.openURL(GITHUB)}
-                    />
-                </TableRowGroup>'''
+                    />'''
+                  )
 
-              new = '''<TableRowGroup title={Strings.LINKS}>
-                    <TableRow
-                        arrow={true}
-                        label={Strings.GITHUB}
-                        icon={<TableRow.Icon source={findAssetId("img_account_sync_github_white")!} />}
-                        onPress={() => Linking.openURL(GITHUB)}
-                    />
-                </TableRowGroup>'''
-
-              text = text.replace(old, new)
               general.write_text(text, encoding="utf-8")
 
           build = Path("scripts/build.mjs")
@@ -151,6 +172,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add cc.js cloudcord.js cloudcord.min.js
           git commit -m "Build CloudCord v0.1 runtime" || exit 0
           git push
