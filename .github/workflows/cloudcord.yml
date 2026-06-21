@@ -46,7 +46,7 @@ jobs:
           import { useProxy } from "@core/vendetta/storage";
           import { findAssetId } from "@lib/api/assets";
           import { showToast } from "@lib/ui/toasts";
-          import { Button, Card, Stack, TableRow, TableRowGroup, Text } from "@metro/common/components";
+          import { Card, Stack, TableRow, TableRowGroup, Text } from "@metro/common/components";
           import { useState } from "react";
           import { ScrollView, View } from "react-native";
 
@@ -131,7 +131,28 @@ jobs:
               }
 
               if (SettingsComponent) {
-                  return <SettingsComponent key={`cloud-sync-settings-${refresh}`} />;
+                  const scale = 0.9;
+
+                  return (
+                      <ScrollView
+                          style={{ flex: 1 }}
+                          contentContainerStyle={{
+                              paddingBottom: 80,
+                              paddingHorizontal: 8,
+                              alignItems: "center"
+                          }}
+                      >
+                          <View
+                              style={{
+                                  width: `${100 / scale}%`,
+                                  transform: [{ scale }],
+                                  alignSelf: "center"
+                              }}
+                          >
+                              <SettingsComponent key={`cloud-sync-settings-${refresh}`} />
+                          </View>
+                      </ScrollView>
+                  );
               }
 
               return (
