@@ -26,7 +26,7 @@ jobs:
           rm -rf _kettu_build
           git clone --depth=1 https://codeberg.org/cocobo1/Kettu.git _kettu_build
 
-      - name: Apply CloudCord branding, Cloud Sync, and global plugin scaling
+      - name: Apply CloudCord branding, Cloud Sync, and global plugin settings wrapper
         run: |
           set -e
           cd _kettu_build
@@ -44,29 +44,38 @@ jobs:
 
           cat > src/core/ui/settings/components/ScaledPluginSettings.tsx <<'TSX'
           import type { ComponentType } from "react";
-          import { ScrollView, View } from "react-native";
+          import { Dimensions, ScrollView, View } from "react-native";
 
           export default function ScaledPluginSettings({ component: Component }: { component: ComponentType<any> }) {
-              const scale = 0.10;
+              const width = Math.max(Dimensions.get("window").width, 980);
 
               return (
                   <ScrollView
+                      horizontal
                       style={{ flex: 1 }}
                       contentContainerStyle={{
-                          paddingBottom: 80,
-                          paddingHorizontal: 8,
-                          alignItems: "center"
+                          minWidth: width + 96,
+                          paddingRight: 96
                       }}
+                      showsHorizontalScrollIndicator={true}
                   >
-                      <View
-                          style={{
-                              width: `${100 / scale}%`,
-                              transform: [{ scale }],
-                              alignSelf: "center"
+                      <ScrollView
+                          style={{ width: width + 96 }}
+                          contentContainerStyle={{
+                              paddingBottom: 90,
+                              paddingRight: 96
                           }}
+                          showsVerticalScrollIndicator={true}
                       >
-                          <Component />
-                      </View>
+                          <View
+                              style={{
+                                  width,
+                                  paddingRight: 96
+                              }}
+                          >
+                              <Component />
+                          </View>
+                      </ScrollView>
                   </ScrollView>
               );
           }
