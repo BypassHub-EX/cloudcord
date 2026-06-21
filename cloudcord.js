@@ -6964,7 +6964,29 @@
       })();
     }
     if (SettingsComponent) {
-      return /* @__PURE__ */ jsx(SettingsComponent, {}, `cloud-sync-settings-${refresh}`);
+      var scale = 0.9;
+      return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
+        style: {
+          flex: 1
+        },
+        contentContainerStyle: {
+          paddingBottom: 80,
+          paddingHorizontal: 8,
+          alignItems: "center"
+        },
+        children: /* @__PURE__ */ jsx(import_react_native18.View, {
+          style: {
+            width: `${100 / scale}%`,
+            transform: [
+              {
+                scale
+              }
+            ],
+            alignSelf: "center"
+          },
+          children: /* @__PURE__ */ jsx(SettingsComponent, {}, `cloud-sync-settings-${refresh}`)
+        })
+      });
     }
     return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
       style: {
