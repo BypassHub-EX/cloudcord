@@ -2904,6 +2904,23 @@
   });
 
   // src/lib/addons/themes/colors/parser.ts
+  function normalizeBackgroundDefinition(bg) {
+    if (!bg)
+      return void 0;
+    var url2 = bg.url || bg.image || bg.source;
+    if (!url2 || typeof url2 !== "string")
+      return void 0;
+    return {
+      url: url2,
+      blur: typeof bg.blur === "number" ? bg.blur : Number(bg.blur) || 0,
+      opacity: typeof bg.opacity === "number" ? bg.opacity : typeof bg.alpha === "number" ? bg.alpha : Number(bg.opacity ?? bg.alpha) || 1
+    };
+  }
+  function getThemeBackground(manifest) {
+    var fromMain = manifest && manifest.main ? manifest.main.background : void 0;
+    var fromRoot = manifest ? manifest.background : void 0;
+    return normalizeBackgroundDefinition(fromMain || fromRoot);
+  }
   function parseColorManifest(manifest) {
     var resolveType = (type2 = "dark") => (colorsPref.type ?? type2) === "dark" ? "darker" : "light";
     if (manifest.spec === 3) {
@@ -2946,17 +2963,12 @@
         reference: resolveType(manifest.type),
         semantic: semanticColorDefinitions,
         raw: manifest.main.raw ?? {},
-        background: manifest.main.background
+        background: getThemeBackground(manifest)
       };
     }
     if (manifest.spec === 2) {
       var semanticDefinitions = {};
-      var background = manifest.background ? {
-        ...omit(manifest.background, [
-          "alpha"
-        ]),
-        opacity: manifest.background.alpha
-      } : void 0;
+      var background = getThemeBackground(manifest);
       if (manifest.semanticColors) {
         for (var key in manifest.semanticColors) {
           var values = manifest.semanticColors[key].map((c2) => c2 || void 0).slice(0, 2);
@@ -3044,7 +3056,7 @@
         reference: resolveType(),
         semantic: semanticDefinitions1,
         raw: rawDefinitions,
-        background: manifest.background
+        background: getThemeBackground(manifest)
       };
     }
     throw new Error("Invalid theme spec");
@@ -3136,7 +3148,6 @@
       init_promiseAllSettled();
       init_metro();
       import_chroma_js = __toESM(require_chroma_js());
-      init_dist();
       import_react_native3 = __toESM(require_react_native());
       init_preferences();
       tokenRef = findByProps("SemanticColor");
@@ -3195,35 +3206,65 @@
   });
 
   // src/lib/addons/themes/colors/patches/background.tsx
+  function getBackground() {
+    var bg = _colorRef.current?.background;
+    if (!bg || colorsPref.customBackground === "hidden")
+      return null;
+    var url2 = bg.url;
+    if (!url2 || typeof url2 !== "string")
+      return null;
+    var blur = typeof bg.blur === "number" ? bg.blur : Number(bg.blur) || 0;
+    var opacity = typeof bg.opacity === "number" ? bg.opacity : Number(bg.opacity) || 1;
+    return {
+      url: url2,
+      blur,
+      opacity
+    };
+  }
   function ThemeBackground({ children }) {
     useObservable([
       colorsPref
     ]);
-    if (!_colorRef.current || colorsPref.customBackground === "hidden" || !_colorRef.current.background?.url || _colorRef.current.background?.blur && typeof _colorRef.current.background?.blur !== "number") {
+    var bg = getBackground();
+    if (!bg)
       return children;
-    }
     return /* @__PURE__ */ jsx(import_react_native4.ImageBackground, {
       style: {
         flex: 1,
+        width: "100%",
         height: "100%"
       },
       source: {
-        uri: _colorRef.current.background?.url
+        uri: bg.url
       },
-      blurRadius: _colorRef.current.background?.blur,
-      children
-    });
+      blurRadius: bg.blur,
+      resizeMode: "cover",
+      children: /* @__PURE__ */ jsx(import_react_native4.View, {
+        style: {
+          flex: 1,
+          backgroundColor: "transparent"
+        },
+        children
+      })
+    }, bg.url);
   }
   function patchChatBackground() {
     try {
       var patches3 = [
         after("render", Messages, (_2, ret) => {
-          if (!_colorRef.current || !_colorRef.current.background?.url)
+          var bg = getBackground();
+          if (!bg)
             return;
-          var messagesComponent = findInReactTree(ret, (x2) => x2 && "HACK_fixModalInteraction" in x2.props && x2?.props?.style);
+          var messagesComponent = findInReactTree(ret, (x2) => x2?.props?.style && ("HACK_fixModalInteraction" in x2.props || Array.isArray(x2.props.children) || x2.props.children));
           if (messagesComponent) {
-            var flattened = import_react_native4.StyleSheet.flatten(messagesComponent.props.style);
-            var backgroundColor = (0, import_chroma_js2.default)(flattened.backgroundColor || "black").alpha(1 - (_colorRef.current.background?.opacity ?? 1)).hex();
+            var flattened = import_react_native4.StyleSheet.flatten(messagesComponent.props.style ?? {});
+            var baseColor = flattened.backgroundColor || "black";
+            var backgroundColor = "transparent";
+            try {
+              backgroundColor = (0, import_chroma_js2.default)(baseColor).alpha(1 - bg.opacity).hex();
+            } catch (e) {
+              backgroundColor = "transparent";
+            }
             messagesComponent.props.style = import_react_native4.StyleSheet.flatten([
               messagesComponent.props.style,
               {
@@ -3255,10 +3296,10 @@
       init_patcher();
       init_storage2();
       init_utils();
+      init_logger();
       init_metro();
       import_chroma_js2 = __toESM(require_chroma_js());
       import_react_native4 = __toESM(require_react_native());
-      init_logger();
       Messages = findByFilePathLazy("modules/messages/native/Messages.tsx", true);
     }
   });
