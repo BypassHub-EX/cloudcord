@@ -6890,27 +6890,33 @@
 
   // src/core/ui/settings/components/ScaledPluginSettings.tsx
   function ScaledPluginSettings({ component: Component }) {
-    var scale = 0.1;
+    var width = Math.max(import_react_native18.Dimensions.get("window").width, 980);
     return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
+      horizontal: true,
       style: {
         flex: 1
       },
       contentContainerStyle: {
-        paddingBottom: 80,
-        paddingHorizontal: 8,
-        alignItems: "center"
+        minWidth: width + 96,
+        paddingRight: 96
       },
-      children: /* @__PURE__ */ jsx(import_react_native18.View, {
+      showsHorizontalScrollIndicator: true,
+      children: /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
         style: {
-          width: `${100 / scale}%`,
-          transform: [
-            {
-              scale
-            }
-          ],
-          alignSelf: "center"
+          width: width + 96
         },
-        children: /* @__PURE__ */ jsx(Component, {})
+        contentContainerStyle: {
+          paddingBottom: 90,
+          paddingRight: 96
+        },
+        showsVerticalScrollIndicator: true,
+        children: /* @__PURE__ */ jsx(import_react_native18.View, {
+          style: {
+            width,
+            paddingRight: 96
+          },
+          children: /* @__PURE__ */ jsx(Component, {})
+        })
       })
     });
   }
