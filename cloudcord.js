@@ -12932,6 +12932,14 @@ Type: ${asset.type}`,
           useTrailing: () => `(${"v0.1"})`
         },
         {
+          key: "CLOUD_SYNC",
+          title: () => "Cloud Sync",
+          icon: {
+            uri: "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
+          },
+          onPress: () => import_react_native34.Linking.openURL("https://revenge.nexpid.xyz/cloud-sync")
+        },
+        {
           key: "BUNNY_PLUGINS",
           title: () => Strings.PLUGINS,
           icon: findAssetId("AppsIcon"),
@@ -12979,6 +12987,7 @@ Type: ${asset.type}`,
       items: []
     });
   }
+  var import_react_native34;
   var init_settings3 = __esm({
     "src/core/ui/settings/index.ts"() {
       "use strict";
@@ -12991,6 +13000,7 @@ Type: ${asset.type}`,
       init_loader();
       init_settings();
       init_settings2();
+      import_react_native34 = __toESM(require_react_native());
     }
   });
 
@@ -13013,7 +13023,7 @@ Type: ${asset.type}`,
   });
 
   // src/core/vendetta/api.tsx
-  var import_react11, import_react_native34, initVendettaObject;
+  var import_react11, import_react_native35, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -13043,7 +13053,7 @@ Type: ${asset.type}`,
       init_toasts();
       init_dist();
       import_react11 = __toESM(require_react());
-      import_react_native34 = __toESM(require_react_native());
+      import_react_native35 = __toESM(require_react_native());
       init_plugins();
       initVendettaObject = () => {
         var createStackBasedFilter = (fn) => {
@@ -13074,7 +13084,7 @@ Type: ${asset.type}`,
                     ActionSheetTitleHeader: module.BottomSheetTitleHeader,
                     ActionSheetContentContainer: ({ children }) => {
                       (0, import_react11.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
-                      return /* @__PURE__ */ (0, import_react11.createElement)(import_react_native34.View, null, children);
+                      return /* @__PURE__ */ (0, import_react11.createElement)(import_react_native35.View, null, children);
                     }
                   };
                 }
