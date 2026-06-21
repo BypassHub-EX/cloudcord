@@ -6717,1141 +6717,6 @@
     }
   });
 
-  // src/lib/utils/isValidHttpUrl.ts
-  function isValidHttpUrl(input) {
-    var url2;
-    try {
-      url2 = new URL(input);
-    } catch (e) {
-      return false;
-    }
-    return url2.protocol === "http:" || url2.protocol === "https:";
-  }
-  var init_isValidHttpUrl = __esm({
-    "src/lib/utils/isValidHttpUrl.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-    }
-  });
-
-  // node_modules/fuzzysort/fuzzysort.js
-  var require_fuzzysort = __commonJS({
-    "node_modules/fuzzysort/fuzzysort.js"(exports, module) {
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_call_super();
-      init_class_call_check();
-      init_create_class();
-      init_inherits();
-      init_wrap_native_super();
-      ((root, UMD) => {
-        if (typeof define === "function" && define.amd)
-          define([], UMD);
-        else if (typeof module === "object" && module.exports)
-          module.exports = UMD();
-        else
-          root["fuzzysort"] = UMD();
-      })(exports, (_2) => {
-        "use strict";
-        var single = (search, target) => {
-          if (!search || !target)
-            return NULL;
-          var preparedSearch = getPreparedSearch(search);
-          if (!isPrepared(target))
-            target = getPrepared(target);
-          var searchBitflags = preparedSearch.bitflags;
-          if ((searchBitflags & target._bitflags) !== searchBitflags)
-            return NULL;
-          return algorithm(preparedSearch, target);
-        };
-        var go = (search, targets, options) => {
-          if (!search)
-            return options?.all ? all(targets, options) : noResults;
-          var preparedSearch = getPreparedSearch(search);
-          var searchBitflags = preparedSearch.bitflags;
-          var containsSpace = preparedSearch.containsSpace;
-          var threshold = denormalizeScore(options?.threshold || 0);
-          var limit = options?.limit || INFINITY;
-          var resultsLen = 0;
-          var limitedCount = 0;
-          var targetsLen = targets.length;
-          function push_result(result2) {
-            if (resultsLen < limit) {
-              q3.add(result2);
-              ++resultsLen;
-            } else {
-              ++limitedCount;
-              if (result2._score > q3.peek()._score)
-                q3.replaceTop(result2);
-            }
-          }
-          if (options?.key) {
-            var key = options.key;
-            for (var i = 0; i < targetsLen; ++i) {
-              var obj = targets[i];
-              var target = getValue(obj, key);
-              if (!target)
-                continue;
-              if (!isPrepared(target))
-                target = getPrepared(target);
-              if ((searchBitflags & target._bitflags) !== searchBitflags)
-                continue;
-              var result = algorithm(preparedSearch, target);
-              if (result === NULL)
-                continue;
-              if (result._score < threshold)
-                continue;
-              result.obj = obj;
-              push_result(result);
-            }
-          } else if (options?.keys) {
-            var keys = options.keys;
-            var keysLen = keys.length;
-            outer:
-              for (var i = 0; i < targetsLen; ++i) {
-                var obj = targets[i];
-                {
-                  var keysBitflags = 0;
-                  for (var keyI = 0; keyI < keysLen; ++keyI) {
-                    var key = keys[keyI];
-                    var target = getValue(obj, key);
-                    if (!target) {
-                      tmpTargets[keyI] = noTarget;
-                      continue;
-                    }
-                    if (!isPrepared(target))
-                      target = getPrepared(target);
-                    tmpTargets[keyI] = target;
-                    keysBitflags |= target._bitflags;
-                  }
-                  if ((searchBitflags & keysBitflags) !== searchBitflags)
-                    continue;
-                }
-                if (containsSpace)
-                  for (var i1 = 0; i1 < preparedSearch.spaceSearches.length; i1++)
-                    keysSpacesBestScores[i1] = NEGATIVE_INFINITY;
-                for (var keyI = 0; keyI < keysLen; ++keyI) {
-                  target = tmpTargets[keyI];
-                  if (target === noTarget) {
-                    tmpResults[keyI] = noTarget;
-                    continue;
-                  }
-                  tmpResults[keyI] = algorithm(
-                    preparedSearch,
-                    target,
-                    /*allowSpaces=*/
-                    false,
-                    /*allowPartialMatch=*/
-                    containsSpace
-                  );
-                  if (tmpResults[keyI] === NULL) {
-                    tmpResults[keyI] = noTarget;
-                    continue;
-                  }
-                  if (containsSpace)
-                    for (var i2 = 0; i2 < preparedSearch.spaceSearches.length; i2++) {
-                      if (allowPartialMatchScores[i2] > -1e3) {
-                        if (keysSpacesBestScores[i2] > NEGATIVE_INFINITY) {
-                          var tmp = (keysSpacesBestScores[i2] + allowPartialMatchScores[i2]) / 4;
-                          if (tmp > keysSpacesBestScores[i2])
-                            keysSpacesBestScores[i2] = tmp;
-                        }
-                      }
-                      if (allowPartialMatchScores[i2] > keysSpacesBestScores[i2])
-                        keysSpacesBestScores[i2] = allowPartialMatchScores[i2];
-                    }
-                }
-                if (containsSpace) {
-                  for (var i3 = 0; i3 < preparedSearch.spaceSearches.length; i3++) {
-                    if (keysSpacesBestScores[i3] === NEGATIVE_INFINITY)
-                      continue outer;
-                  }
-                } else {
-                  var hasAtLeast1Match = false;
-                  for (var i4 = 0; i4 < keysLen; i4++) {
-                    if (tmpResults[i4]._score !== NEGATIVE_INFINITY) {
-                      hasAtLeast1Match = true;
-                      break;
-                    }
-                  }
-                  if (!hasAtLeast1Match)
-                    continue;
-                }
-                var objResults = new KeysResult(keysLen);
-                for (var i5 = 0; i5 < keysLen; i5++) {
-                  objResults[i5] = tmpResults[i5];
-                }
-                if (containsSpace) {
-                  var score = 0;
-                  for (var i6 = 0; i6 < preparedSearch.spaceSearches.length; i6++)
-                    score += keysSpacesBestScores[i6];
-                } else {
-                  var score = NEGATIVE_INFINITY;
-                  for (var i7 = 0; i7 < keysLen; i7++) {
-                    var result = objResults[i7];
-                    if (result._score > -1e3) {
-                      if (score > NEGATIVE_INFINITY) {
-                        var tmp = (score + result._score) / 4;
-                        if (tmp > score)
-                          score = tmp;
-                      }
-                    }
-                    if (result._score > score)
-                      score = result._score;
-                  }
-                }
-                objResults.obj = obj;
-                objResults._score = score;
-                if (options?.scoreFn) {
-                  score = options.scoreFn(objResults);
-                  if (!score)
-                    continue;
-                  score = denormalizeScore(score);
-                  objResults._score = score;
-                }
-                if (score < threshold)
-                  continue;
-                push_result(objResults);
-              }
-          } else {
-            for (var i = 0; i < targetsLen; ++i) {
-              var target = targets[i];
-              if (!target)
-                continue;
-              if (!isPrepared(target))
-                target = getPrepared(target);
-              if ((searchBitflags & target._bitflags) !== searchBitflags)
-                continue;
-              var result = algorithm(preparedSearch, target);
-              if (result === NULL)
-                continue;
-              if (result._score < threshold)
-                continue;
-              push_result(result);
-            }
-          }
-          if (resultsLen === 0)
-            return noResults;
-          var results = new Array(resultsLen);
-          for (var i = resultsLen - 1; i >= 0; --i)
-            results[i] = q3.poll();
-          results.total = resultsLen + limitedCount;
-          return results;
-        };
-        var highlight = (result, open = "<b>", close = "</b>") => {
-          var callback = typeof open === "function" ? open : void 0;
-          var target = result.target;
-          var targetLen = target.length;
-          var indexes = result.indexes;
-          var highlighted = "";
-          var matchI = 0;
-          var indexesI = 0;
-          var opened = false;
-          var parts = [];
-          for (var i = 0; i < targetLen; ++i) {
-            var char = target[i];
-            if (indexes[indexesI] === i) {
-              ++indexesI;
-              if (!opened) {
-                opened = true;
-                if (callback) {
-                  parts.push(highlighted);
-                  highlighted = "";
-                } else {
-                  highlighted += open;
-                }
-              }
-              if (indexesI === indexes.length) {
-                if (callback) {
-                  highlighted += char;
-                  parts.push(callback(highlighted, matchI++));
-                  highlighted = "";
-                  parts.push(target.substr(i + 1));
-                } else {
-                  highlighted += char + close + target.substr(i + 1);
-                }
-                break;
-              }
-            } else {
-              if (opened) {
-                opened = false;
-                if (callback) {
-                  parts.push(callback(highlighted, matchI++));
-                  highlighted = "";
-                } else {
-                  highlighted += close;
-                }
-              }
-            }
-            highlighted += char;
-          }
-          return callback ? parts : highlighted;
-        };
-        var prepare = (target) => {
-          if (typeof target === "number")
-            target = "" + target;
-          else if (typeof target !== "string")
-            target = "";
-          var info = prepareLowerInfo(target);
-          return new_result(target, {
-            _targetLower: info._lower,
-            _targetLowerCodes: info.lowerCodes,
-            _bitflags: info.bitflags
-          });
-        };
-        var cleanup = () => {
-          preparedCache.clear();
-          preparedSearchCache.clear();
-        };
-        var Result = /* @__PURE__ */ function() {
-          function Result2() {
-            _class_call_check(this, Result2);
-          }
-          _create_class(Result2, [
-            {
-              key: "indexes",
-              get: function get() {
-                return this._indexes.slice(0, this._indexes.len).sort((a, b3) => a - b3);
-              }
-            },
-            {
-              key: "indexes",
-              set: function set(indexes) {
-                return this._indexes = indexes;
-              }
-            },
-            {
-              key: "highlight",
-              value: function value(open, close) {
-                return highlight(this, open, close);
-              }
-            },
-            {
-              key: "score",
-              get: function get() {
-                return normalizeScore(this._score);
-              }
-            },
-            {
-              key: "score",
-              set: function set(score) {
-                this._score = denormalizeScore(score);
-              }
-            }
-          ]);
-          return Result2;
-        }();
-        var KeysResult = /* @__PURE__ */ function(Array1) {
-          _inherits(KeysResult2, Array1);
-          function KeysResult2() {
-            _class_call_check(this, KeysResult2);
-            return _call_super(this, KeysResult2, arguments);
-          }
-          _create_class(KeysResult2, [
-            {
-              key: "score",
-              get: function get() {
-                return normalizeScore(this._score);
-              }
-            },
-            {
-              key: "score",
-              set: function set(score) {
-                this._score = denormalizeScore(score);
-              }
-            }
-          ]);
-          return KeysResult2;
-        }(_wrap_native_super(Array));
-        var new_result = (target, options) => {
-          var result = new Result();
-          result["target"] = target;
-          result["obj"] = options.obj ?? NULL;
-          result._score = options._score ?? NEGATIVE_INFINITY;
-          result._indexes = options._indexes ?? [];
-          result._targetLower = options._targetLower ?? "";
-          result._targetLowerCodes = options._targetLowerCodes ?? NULL;
-          result._nextBeginningIndexes = options._nextBeginningIndexes ?? NULL;
-          result._bitflags = options._bitflags ?? 0;
-          return result;
-        };
-        var normalizeScore = (score) => {
-          if (score === NEGATIVE_INFINITY)
-            return 0;
-          if (score > 1)
-            return score;
-          return Math.E ** (((-score + 1) ** 0.04307 - 1) * -2);
-        };
-        var denormalizeScore = (normalizedScore) => {
-          if (normalizedScore === 0)
-            return NEGATIVE_INFINITY;
-          if (normalizedScore > 1)
-            return normalizedScore;
-          return 1 - Math.pow(Math.log(normalizedScore) / -2 + 1, 1 / 0.04307);
-        };
-        var prepareSearch = (search) => {
-          if (typeof search === "number")
-            search = "" + search;
-          else if (typeof search !== "string")
-            search = "";
-          search = search.trim();
-          var info = prepareLowerInfo(search);
-          var spaceSearches = [];
-          if (info.containsSpace) {
-            var searches = search.split(/\s+/);
-            searches = [
-              ...new Set(searches)
-            ];
-            for (var i = 0; i < searches.length; i++) {
-              if (searches[i] === "")
-                continue;
-              var _info = prepareLowerInfo(searches[i]);
-              spaceSearches.push({
-                lowerCodes: _info.lowerCodes,
-                _lower: searches[i].toLowerCase(),
-                containsSpace: false
-              });
-            }
-          }
-          return {
-            lowerCodes: info.lowerCodes,
-            _lower: info._lower,
-            containsSpace: info.containsSpace,
-            bitflags: info.bitflags,
-            spaceSearches
-          };
-        };
-        var getPrepared = (target) => {
-          if (target.length > 999)
-            return prepare(target);
-          var targetPrepared = preparedCache.get(target);
-          if (targetPrepared !== void 0)
-            return targetPrepared;
-          targetPrepared = prepare(target);
-          preparedCache.set(target, targetPrepared);
-          return targetPrepared;
-        };
-        var getPreparedSearch = (search) => {
-          if (search.length > 999)
-            return prepareSearch(search);
-          var searchPrepared = preparedSearchCache.get(search);
-          if (searchPrepared !== void 0)
-            return searchPrepared;
-          searchPrepared = prepareSearch(search);
-          preparedSearchCache.set(search, searchPrepared);
-          return searchPrepared;
-        };
-        var all = (targets, options) => {
-          var results = [];
-          results.total = targets.length;
-          var limit = options?.limit || INFINITY;
-          if (options?.key) {
-            for (var i = 0; i < targets.length; i++) {
-              var obj = targets[i];
-              var target = getValue(obj, options.key);
-              if (target == NULL)
-                continue;
-              if (!isPrepared(target))
-                target = getPrepared(target);
-              var result = new_result(target.target, {
-                _score: target._score,
-                obj
-              });
-              results.push(result);
-              if (results.length >= limit)
-                return results;
-            }
-          } else if (options?.keys) {
-            for (var i = 0; i < targets.length; i++) {
-              var obj = targets[i];
-              var objResults = new KeysResult(options.keys.length);
-              for (var keyI = options.keys.length - 1; keyI >= 0; --keyI) {
-                var target = getValue(obj, options.keys[keyI]);
-                if (!target) {
-                  objResults[keyI] = noTarget;
-                  continue;
-                }
-                if (!isPrepared(target))
-                  target = getPrepared(target);
-                target._score = NEGATIVE_INFINITY;
-                target._indexes.len = 0;
-                objResults[keyI] = target;
-              }
-              objResults.obj = obj;
-              objResults._score = NEGATIVE_INFINITY;
-              results.push(objResults);
-              if (results.length >= limit)
-                return results;
-            }
-          } else {
-            for (var i = 0; i < targets.length; i++) {
-              var target = targets[i];
-              if (target == NULL)
-                continue;
-              if (!isPrepared(target))
-                target = getPrepared(target);
-              target._score = NEGATIVE_INFINITY;
-              target._indexes.len = 0;
-              results.push(target);
-              if (results.length >= limit)
-                return results;
-            }
-          }
-          return results;
-        };
-        var algorithm = (preparedSearch, prepared, allowSpaces = false, allowPartialMatch = false) => {
-          if (allowSpaces === false && preparedSearch.containsSpace)
-            return algorithmSpaces(preparedSearch, prepared, allowPartialMatch);
-          var searchLower = preparedSearch._lower;
-          var searchLowerCodes = preparedSearch.lowerCodes;
-          var searchLowerCode = searchLowerCodes[0];
-          var targetLowerCodes = prepared._targetLowerCodes;
-          var searchLen = searchLowerCodes.length;
-          var targetLen = targetLowerCodes.length;
-          var searchI = 0;
-          var targetI = 0;
-          var matchesSimpleLen = 0;
-          for (; ; ) {
-            var isMatch = searchLowerCode === targetLowerCodes[targetI];
-            if (isMatch) {
-              matchesSimple[matchesSimpleLen++] = targetI;
-              ++searchI;
-              if (searchI === searchLen)
-                break;
-              searchLowerCode = searchLowerCodes[searchI];
-            }
-            ++targetI;
-            if (targetI >= targetLen)
-              return NULL;
-          }
-          var searchI = 0;
-          var successStrict = false;
-          var matchesStrictLen = 0;
-          var nextBeginningIndexes = prepared._nextBeginningIndexes;
-          if (nextBeginningIndexes === NULL)
-            nextBeginningIndexes = prepared._nextBeginningIndexes = prepareNextBeginningIndexes(prepared.target);
-          targetI = matchesSimple[0] === 0 ? 0 : nextBeginningIndexes[matchesSimple[0] - 1];
-          var backtrackCount = 0;
-          if (targetI !== targetLen)
-            for (; ; ) {
-              if (targetI >= targetLen) {
-                if (searchI <= 0)
-                  break;
-                ++backtrackCount;
-                if (backtrackCount > 200)
-                  break;
-                --searchI;
-                var lastMatch = matchesStrict[--matchesStrictLen];
-                targetI = nextBeginningIndexes[lastMatch];
-              } else {
-                var isMatch = searchLowerCodes[searchI] === targetLowerCodes[targetI];
-                if (isMatch) {
-                  matchesStrict[matchesStrictLen++] = targetI;
-                  ++searchI;
-                  if (searchI === searchLen) {
-                    successStrict = true;
-                    break;
-                  }
-                  ++targetI;
-                } else {
-                  targetI = nextBeginningIndexes[targetI];
-                }
-              }
-            }
-          var substringIndex = searchLen <= 1 ? -1 : prepared._targetLower.indexOf(searchLower, matchesSimple[0]);
-          var isSubstring = !!~substringIndex;
-          var isSubstringBeginning = !isSubstring ? false : substringIndex === 0 || prepared._nextBeginningIndexes[substringIndex - 1] === substringIndex;
-          if (isSubstring && !isSubstringBeginning) {
-            for (var i = 0; i < nextBeginningIndexes.length; i = nextBeginningIndexes[i]) {
-              if (i <= substringIndex)
-                continue;
-              for (var s = 0; s < searchLen; s++)
-                if (searchLowerCodes[s] !== prepared._targetLowerCodes[i + s])
-                  break;
-              if (s === searchLen) {
-                substringIndex = i;
-                isSubstringBeginning = true;
-                break;
-              }
-            }
-          }
-          var calculateScore = (matches) => {
-            var score2 = 0;
-            var extraMatchGroupCount = 0;
-            for (var i2 = 1; i2 < searchLen; ++i2) {
-              if (matches[i2] - matches[i2 - 1] !== 1) {
-                score2 -= matches[i2];
-                ++extraMatchGroupCount;
-              }
-            }
-            var unmatchedDistance = matches[searchLen - 1] - matches[0] - (searchLen - 1);
-            score2 -= (12 + unmatchedDistance) * extraMatchGroupCount;
-            if (matches[0] !== 0)
-              score2 -= matches[0] * matches[0] * 0.2;
-            if (!successStrict) {
-              score2 *= 1e3;
-            } else {
-              var uniqueBeginningIndexes = 1;
-              for (var i2 = nextBeginningIndexes[0]; i2 < targetLen; i2 = nextBeginningIndexes[i2])
-                ++uniqueBeginningIndexes;
-              if (uniqueBeginningIndexes > 24)
-                score2 *= (uniqueBeginningIndexes - 24) * 10;
-            }
-            score2 -= (targetLen - searchLen) / 2;
-            if (isSubstring)
-              score2 /= 1 + searchLen * searchLen * 1;
-            if (isSubstringBeginning)
-              score2 /= 1 + searchLen * searchLen * 1;
-            score2 -= (targetLen - searchLen) / 2;
-            return score2;
-          };
-          if (!successStrict) {
-            if (isSubstring)
-              for (var i = 0; i < searchLen; ++i)
-                matchesSimple[i] = substringIndex + i;
-            var matchesBest = matchesSimple;
-            var score = calculateScore(matchesBest);
-          } else {
-            if (isSubstringBeginning) {
-              for (var i = 0; i < searchLen; ++i)
-                matchesSimple[i] = substringIndex + i;
-              var matchesBest = matchesSimple;
-              var score = calculateScore(matchesSimple);
-            } else {
-              var matchesBest = matchesStrict;
-              var score = calculateScore(matchesStrict);
-            }
-          }
-          prepared._score = score;
-          for (var i = 0; i < searchLen; ++i)
-            prepared._indexes[i] = matchesBest[i];
-          prepared._indexes.len = searchLen;
-          var result = new Result();
-          result.target = prepared.target;
-          result._score = prepared._score;
-          result._indexes = prepared._indexes;
-          return result;
-        };
-        var algorithmSpaces = (preparedSearch, target, allowPartialMatch) => {
-          var seen_indexes = /* @__PURE__ */ new Set();
-          var score = 0;
-          var result = NULL;
-          var first_seen_index_last_search = 0;
-          var searches = preparedSearch.spaceSearches;
-          var searchesLen = searches.length;
-          var changeslen = 0;
-          var resetNextBeginningIndexes = () => {
-            for (var i3 = changeslen - 1; i3 >= 0; i3--)
-              target._nextBeginningIndexes[nextBeginningIndexesChanges[i3 * 2 + 0]] = nextBeginningIndexesChanges[i3 * 2 + 1];
-          };
-          var hasAtLeast1Match = false;
-          for (var i = 0; i < searchesLen; ++i) {
-            allowPartialMatchScores[i] = NEGATIVE_INFINITY;
-            var search = searches[i];
-            result = algorithm(search, target);
-            if (allowPartialMatch) {
-              if (result === NULL)
-                continue;
-              hasAtLeast1Match = true;
-            } else {
-              if (result === NULL) {
-                resetNextBeginningIndexes();
-                return NULL;
-              }
-            }
-            var isTheLastSearch = i === searchesLen - 1;
-            if (!isTheLastSearch) {
-              var indexes = result._indexes;
-              var indexesIsConsecutiveSubstring = true;
-              for (var i1 = 0; i1 < indexes.len - 1; i1++) {
-                if (indexes[i1 + 1] - indexes[i1] !== 1) {
-                  indexesIsConsecutiveSubstring = false;
-                  break;
-                }
-              }
-              if (indexesIsConsecutiveSubstring) {
-                var newBeginningIndex = indexes[indexes.len - 1] + 1;
-                var toReplace = target._nextBeginningIndexes[newBeginningIndex - 1];
-                for (var i2 = newBeginningIndex - 1; i2 >= 0; i2--) {
-                  if (toReplace !== target._nextBeginningIndexes[i2])
-                    break;
-                  target._nextBeginningIndexes[i2] = newBeginningIndex;
-                  nextBeginningIndexesChanges[changeslen * 2 + 0] = i2;
-                  nextBeginningIndexesChanges[changeslen * 2 + 1] = toReplace;
-                  changeslen++;
-                }
-              }
-            }
-            score += result._score / searchesLen;
-            allowPartialMatchScores[i] = result._score / searchesLen;
-            if (result._indexes[0] < first_seen_index_last_search) {
-              score -= (first_seen_index_last_search - result._indexes[0]) * 2;
-            }
-            first_seen_index_last_search = result._indexes[0];
-            for (var j = 0; j < result._indexes.len; ++j)
-              seen_indexes.add(result._indexes[j]);
-          }
-          if (allowPartialMatch && !hasAtLeast1Match)
-            return NULL;
-          resetNextBeginningIndexes();
-          var allowSpacesResult = algorithm(
-            preparedSearch,
-            target,
-            /*allowSpaces=*/
-            true
-          );
-          if (allowSpacesResult !== NULL && allowSpacesResult._score > score) {
-            if (allowPartialMatch) {
-              for (var i = 0; i < searchesLen; ++i) {
-                allowPartialMatchScores[i] = allowSpacesResult._score / searchesLen;
-              }
-            }
-            return allowSpacesResult;
-          }
-          if (allowPartialMatch)
-            result = target;
-          result._score = score;
-          var i = 0;
-          for (var index of seen_indexes)
-            result._indexes[i++] = index;
-          result._indexes.len = i;
-          return result;
-        };
-        var remove_accents = (str) => str.replace(RegExp("\\p{Script=Latin}+", "gu"), (match) => match.normalize("NFD")).replace(/[\u0300-\u036f]/g, "");
-        var prepareLowerInfo = (str) => {
-          str = remove_accents(str);
-          var strLen = str.length;
-          var lower = str.toLowerCase();
-          var lowerCodes = [];
-          var bitflags = 0;
-          var containsSpace = false;
-          for (var i = 0; i < strLen; ++i) {
-            var lowerCode = lowerCodes[i] = lower.charCodeAt(i);
-            if (lowerCode === 32) {
-              containsSpace = true;
-              continue;
-            }
-            var bit = lowerCode >= 97 && lowerCode <= 122 ? lowerCode - 97 : lowerCode >= 48 && lowerCode <= 57 ? 26 : lowerCode <= 127 ? 30 : 31;
-            bitflags |= 1 << bit;
-          }
-          return {
-            lowerCodes,
-            bitflags,
-            containsSpace,
-            _lower: lower
-          };
-        };
-        var prepareBeginningIndexes = (target) => {
-          var targetLen = target.length;
-          var beginningIndexes = [];
-          var beginningIndexesLen = 0;
-          var wasUpper = false;
-          var wasAlphanum = false;
-          for (var i = 0; i < targetLen; ++i) {
-            var targetCode = target.charCodeAt(i);
-            var isUpper = targetCode >= 65 && targetCode <= 90;
-            var isAlphanum = isUpper || targetCode >= 97 && targetCode <= 122 || targetCode >= 48 && targetCode <= 57;
-            var isBeginning = isUpper && !wasUpper || !wasAlphanum || !isAlphanum;
-            wasUpper = isUpper;
-            wasAlphanum = isAlphanum;
-            if (isBeginning)
-              beginningIndexes[beginningIndexesLen++] = i;
-          }
-          return beginningIndexes;
-        };
-        var prepareNextBeginningIndexes = (target) => {
-          target = remove_accents(target);
-          var targetLen = target.length;
-          var beginningIndexes = prepareBeginningIndexes(target);
-          var nextBeginningIndexes = [];
-          var lastIsBeginning = beginningIndexes[0];
-          var lastIsBeginningI = 0;
-          for (var i = 0; i < targetLen; ++i) {
-            if (lastIsBeginning > i) {
-              nextBeginningIndexes[i] = lastIsBeginning;
-            } else {
-              lastIsBeginning = beginningIndexes[++lastIsBeginningI];
-              nextBeginningIndexes[i] = lastIsBeginning === void 0 ? targetLen : lastIsBeginning;
-            }
-          }
-          return nextBeginningIndexes;
-        };
-        var preparedCache = /* @__PURE__ */ new Map();
-        var preparedSearchCache = /* @__PURE__ */ new Map();
-        var matchesSimple = [];
-        var matchesStrict = [];
-        var nextBeginningIndexesChanges = [];
-        var keysSpacesBestScores = [];
-        var allowPartialMatchScores = [];
-        var tmpTargets = [];
-        var tmpResults = [];
-        var getValue = (obj, prop) => {
-          var tmp = obj[prop];
-          if (tmp !== void 0)
-            return tmp;
-          if (typeof prop === "function")
-            return prop(obj);
-          var segs = prop;
-          if (!Array.isArray(prop))
-            segs = prop.split(".");
-          var len = segs.length;
-          var i = -1;
-          while (obj && ++i < len)
-            obj = obj[segs[i]];
-          return obj;
-        };
-        var isPrepared = (x2) => {
-          return typeof x2 === "object" && typeof x2._bitflags === "number";
-        };
-        var INFINITY = Infinity;
-        var NEGATIVE_INFINITY = -INFINITY;
-        var noResults = [];
-        noResults.total = 0;
-        var NULL = null;
-        var noTarget = prepare("");
-        var fastpriorityqueue = (r) => {
-          var e = [], o = 0, a = {}, v2 = (r2) => {
-            for (var a2 = 0, v3 = e[a2], c2 = 1; c2 < o; ) {
-              var s = c2 + 1;
-              a2 = c2, s < o && e[s]._score < e[c2]._score && (a2 = s), e[a2 - 1 >> 1] = e[a2], c2 = 1 + (a2 << 1);
-            }
-            for (var f = a2 - 1 >> 1; a2 > 0 && v3._score < e[f]._score; f = (a2 = f) - 1 >> 1)
-              e[a2] = e[f];
-            e[a2] = v3;
-          };
-          return a.add = (r2) => {
-            var a2 = o;
-            e[o++] = r2;
-            for (var v3 = a2 - 1 >> 1; a2 > 0 && r2._score < e[v3]._score; v3 = (a2 = v3) - 1 >> 1)
-              e[a2] = e[v3];
-            e[a2] = r2;
-          }, a.poll = (r2) => {
-            if (0 !== o) {
-              var a2 = e[0];
-              return e[0] = e[--o], v2(), a2;
-            }
-          }, a.peek = (r2) => {
-            if (0 !== o)
-              return e[0];
-          }, a.replaceTop = (r2) => {
-            e[0] = r2, v2();
-          }, a;
-        };
-        var q3 = fastpriorityqueue();
-        return {
-          "single": single,
-          "go": go,
-          "prepare": prepare,
-          "cleanup": cleanup
-        };
-      });
-    }
-  });
-
-  // src/core/ui/components/AddonPage.tsx
-  function InputAlert(props) {
-    var [value, setValue] = React.useState("");
-    var [error, setError] = React.useState("");
-    var [isFetching, setIsFetching] = React.useState(false);
-    function onConfirmWrapper() {
-      setIsFetching(true);
-      props.fetchFn(value).then(() => dismissAlert("AddonInputAlert")).catch((e) => e instanceof Error ? setError(e.message) : String(e)).finally(() => setIsFetching(false));
-    }
-    return /* @__PURE__ */ jsx(AlertModal, {
-      title: props.label,
-      content: "Type in the source URL you want to install from:",
-      extraContent: /* @__PURE__ */ jsxs(Stack, {
-        style: {
-          marginTop: -12
-        },
-        children: [
-          /* @__PURE__ */ jsx(TextInput, {
-            autoFocus: true,
-            isClearable: true,
-            value,
-            onChange: (v2) => {
-              setValue(v2);
-              if (error)
-                setError("");
-            },
-            returnKeyType: "done",
-            onSubmitEditing: onConfirmWrapper,
-            state: error ? "error" : void 0,
-            errorMessage: error || void 0
-          }),
-          /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
-            horizontal: true,
-            showsHorizontalScrollIndicator: false,
-            style: {
-              gap: 8
-            },
-            children: /* @__PURE__ */ jsx(Button, {
-              size: "sm",
-              variant: "tertiary",
-              text: "Import from clipboard",
-              icon: findAssetId("ClipboardListIcon"),
-              onPress: () => clipboard.getString().then((str) => setValue(str))
-            })
-          })
-        ]
-      }),
-      actions: /* @__PURE__ */ jsxs(Stack, {
-        children: [
-          /* @__PURE__ */ jsx(Button, {
-            loading: isFetching,
-            text: "Install",
-            variant: "primary",
-            disabled: !value || !isValidHttpUrl(value),
-            onPress: onConfirmWrapper
-          }),
-          /* @__PURE__ */ jsx(AlertActionButton, {
-            disabled: isFetching,
-            text: "Cancel",
-            variant: "secondary"
-          })
-        ]
-      })
-    });
-  }
-  function AddonPage({ CardComponent, ...props }) {
-    var [search, setSearch] = React.useState("");
-    var [sortFn, setSortFn] = React.useState(() => null);
-    var { bottom: bottomInset } = useSafeAreaInsets();
-    var navigation2 = NavigationNative.useNavigation();
-    (0, import_react3.useEffect)(() => {
-      if (props.OptionsActionSheetComponent) {
-        navigation2.setOptions({
-          headerRight: () => /* @__PURE__ */ jsx(IconButton, {
-            size: "sm",
-            variant: "secondary",
-            icon: findAssetId("MoreHorizontalIcon"),
-            onPress: () => showSheet("AddonMoreSheet", props.OptionsActionSheetComponent)
-          })
-        });
-      }
-    }, [
-      navigation2
-    ]);
-    var results = (0, import_react3.useMemo)(() => {
-      var values = props.items;
-      if (props.resolveItem)
-        values = values.map(props.resolveItem).filter(isNotNil);
-      var items = values.filter((i) => isNotNil(i) && typeof i === "object");
-      if (!search && sortFn)
-        items.sort(sortFn);
-      return import_fuzzysort.default.go(search, items, {
-        keys: props.searchKeywords,
-        all: true
-      });
-    }, [
-      props.items,
-      sortFn,
-      search
-    ]);
-    var onInstallPress = (0, import_react3.useCallback)(() => {
-      if (!props.installAction)
-        return () => {
-        };
-      var { label, onPress, fetchFn } = props.installAction;
-      if (fetchFn) {
-        openAlert("AddonInputAlert", /* @__PURE__ */ jsx(InputAlert, {
-          label: label ?? "Install",
-          fetchFn
-        }));
-      } else {
-        onPress?.();
-      }
-    }, []);
-    if (results.length === 0 && !search) {
-      return /* @__PURE__ */ jsxs(import_react_native18.View, {
-        style: {
-          gap: 32,
-          flexGrow: 1,
-          justifyContent: "center",
-          alignItems: "center"
-        },
-        children: [
-          /* @__PURE__ */ jsxs(import_react_native18.View, {
-            style: {
-              gap: 8,
-              alignItems: "center"
-            },
-            children: [
-              /* @__PURE__ */ jsx(import_react_native18.Image, {
-                source: findAssetId("empty_quick_switcher")
-              }),
-              /* @__PURE__ */ jsx(Text, {
-                variant: "text-lg/semibold",
-                color: "text-default",
-                children: "Oops! Nothing to see here\u2026 yet!"
-              })
-            ]
-          }),
-          /* @__PURE__ */ jsx(Button, {
-            size: "lg",
-            icon: findAssetId("DownloadIcon"),
-            text: props.installAction?.label ?? "Install",
-            onPress: onInstallPress
-          })
-        ]
-      });
-    }
-    var headerElement = /* @__PURE__ */ jsxs(import_react_native18.View, {
-      style: {
-        paddingBottom: 8
-      },
-      children: [
-        settings.safeMode?.enabled && /* @__PURE__ */ jsxs(import_react_native18.View, {
-          style: {
-            marginBottom: 10
-          },
-          children: [
-            /* @__PURE__ */ jsx(HelpMessage, {
-              messageType: 0,
-              children: props.safeModeHint?.message
-            }),
-            props.safeModeHint?.footer
-          ]
-        }),
-        /* @__PURE__ */ jsxs(import_react_native18.View, {
-          style: {
-            flexDirection: "row",
-            gap: 8
-          },
-          children: [
-            /* @__PURE__ */ jsx(Search_default, {
-              style: {
-                flexGrow: 1
-              },
-              isRound: !!props.sortOptions,
-              onChangeText: (v2) => setSearch(v2)
-            }),
-            props.sortOptions && /* @__PURE__ */ jsx(IconButton, {
-              icon: findAssetId("ArrowsUpDownIcon"),
-              variant: "tertiary",
-              disabled: !!search,
-              onPress: () => showSimpleActionSheet({
-                key: "AddonListSortOptions",
-                header: {
-                  title: "Sort Options",
-                  onClose: () => hideActionSheet("AddonListSortOptions")
-                },
-                options: Object.entries(props.sortOptions).map(([name, fn]) => ({
-                  label: name,
-                  onPress: () => setSortFn(() => fn)
-                }))
-              })
-            })
-          ]
-        }),
-        props.ListHeaderComponent && /* @__PURE__ */ jsx(props.ListHeaderComponent, {})
-      ]
-    });
-    return /* @__PURE__ */ jsxs(ErrorBoundary, {
-      children: [
-        /* @__PURE__ */ jsx(FlashList, {
-          data: results,
-          extraData: search,
-          estimatedItemSize: 136,
-          ListHeaderComponent: headerElement,
-          ListEmptyComponent: () => /* @__PURE__ */ jsxs(import_react_native18.View, {
-            style: {
-              gap: 12,
-              padding: 12,
-              alignItems: "center"
-            },
-            children: [
-              /* @__PURE__ */ jsx(import_react_native18.Image, {
-                source: findAssetId("devices_not_found")
-              }),
-              /* @__PURE__ */ jsx(Text, {
-                variant: "text-lg/semibold",
-                color: "text-default",
-                children: "Hmmm... could not find that!"
-              })
-            ]
-          }),
-          contentContainerStyle: {
-            padding: 8,
-            paddingHorizontal: 12,
-            paddingBottom: 90
-          },
-          ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native18.View, {
-            style: {
-              height: 8
-            }
-          }),
-          ListFooterComponent: props.ListFooterComponent,
-          renderItem: ({ item }) => /* @__PURE__ */ jsx(CardComponent, {
-            item: item.obj,
-            result: item
-          })
-        }),
-        props.installAction && /* @__PURE__ */ jsx(FloatingActionButton, {
-          positionBottom: bottomInset + 8,
-          icon: findAssetId("PlusLargeIcon"),
-          onPress: onInstallPress
-        })
-      ]
-    });
-  }
-  var import_fuzzysort, import_react3, import_react_native18, showSimpleActionSheet, hideActionSheet;
-  var init_AddonPage = __esm({
-    "src/core/ui/components/AddonPage.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      init_assets();
-      init_settings();
-      init_alerts();
-      init_sheets();
-      init_isValidHttpUrl();
-      init_lazy();
-      init_metro();
-      init_common();
-      init_components();
-      init_components2();
-      init_dist();
-      import_fuzzysort = __toESM(require_fuzzysort());
-      import_react3 = __toESM(require_react());
-      import_react_native18 = __toESM(require_react_native());
-      ({ showSimpleActionSheet, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
-    }
-  });
-
-  // src/core/ui/settings/pages/Plugins/usePluginCardStyles.ts
-  var usePluginCardStyles;
-  var init_usePluginCardStyles = __esm({
-    "src/core/ui/settings/pages/Plugins/usePluginCardStyles.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_common();
-      init_styles();
-      usePluginCardStyles = createStyles({
-        smallIcon: {
-          tintColor: tokens.colors.LOGO_PRIMARY,
-          height: 18,
-          width: 18
-        },
-        badgeIcon: {
-          tintColor: tokens.colors.LOGO_PRIMARY,
-          height: 12,
-          width: 12
-        },
-        badgesContainer: {
-          flexWrap: "wrap",
-          flexDirection: "row",
-          gap: 6,
-          borderRadius: 6,
-          padding: 4
-        }
-      });
-    }
-  });
-
   // src/core/vendetta/plugins.ts
   var plugins, pluginInstance, VdPluginManager;
   var init_plugins = __esm({
@@ -8152,7 +7017,7 @@
   });
 
   // src/lib/ui/components/InputAlert.tsx
-  function InputAlert2({ title, confirmText, confirmColor, onConfirm, cancelText, placeholder, initialValue = "", secureTextEntry }) {
+  function InputAlert({ title, confirmText, confirmColor, onConfirm, cancelText, placeholder, initialValue = "", secureTextEntry }) {
     var [value, setValue] = React.useState(initialValue);
     var [error, setError] = React.useState("");
     function onConfirmWrapper() {
@@ -8227,7 +7092,7 @@
           return () => React.createElement(component, props);
         })()
       });
-      showInputAlert = (options) => showCustomAlert(InputAlert2, options);
+      showInputAlert = (options) => showCustomAlert(InputAlert, options);
     }
   });
 
@@ -8246,7 +7111,7 @@
       showToast(e.message, findAssetId("Small"));
     });
   }
-  var import_react_native19, showSimpleActionSheet2, handleClick, getChannelId, getChannel, url_default;
+  var import_react_native18, showSimpleActionSheet, handleClick, getChannelId, getChannel, url_default;
   var init_url = __esm({
     "src/core/plugins/quickinstall/url.tsx"() {
       "use strict";
@@ -8267,14 +7132,14 @@
       init_finders();
       init_wrappers();
       init_toasts();
-      import_react_native19 = __toESM(require_react_native());
-      showSimpleActionSheet2 = findExports(byMutableProp("showSimpleActionSheet"));
+      import_react_native18 = __toESM(require_react_native());
+      showSimpleActionSheet = findExports(byMutableProp("showSimpleActionSheet"));
       handleClick = findByPropsLazy("handleClick");
       ({ getChannelId } = lazyDestructure(() => channels));
       ({ getChannel } = lazyDestructure(() => findByProps("getChannel")));
       url_default = () => {
         var patches3 = new Array();
-        patches3.push(after("showSimpleActionSheet", showSimpleActionSheet2, (args) => {
+        patches3.push(after("showSimpleActionSheet", showSimpleActionSheet, (args) => {
           if (args[0].key !== "LongPressUrl")
             return;
           var { header: { title: url2 }, options } = args[0];
@@ -8303,7 +7168,7 @@
               confirmText: Strings.INSTALL,
               cancelText: Strings.CANCEL,
               secondaryConfirmText: Strings.OPEN_IN_BROWSER,
-              onConfirmSecondary: () => import_react_native19.Linking.openURL(url2)
+              onConfirmSecondary: () => import_react_native18.Linking.openURL(url2)
             });
           }).call(this);
         }));
@@ -9538,6 +8403,1593 @@
     }
   });
 
+  // src/lib/addons/fonts/index.ts
+  var fonts_exports = {};
+  __export(fonts_exports, {
+    fonts: () => fonts,
+    installFont: () => installFont,
+    removeFont: () => removeFont,
+    saveFont: () => saveFont,
+    selectFont: () => selectFont,
+    updateFont: () => updateFont,
+    updateFonts: () => updateFonts,
+    validateFont: () => validateFont
+  });
+  function writeFont(font) {
+    return _async_to_generator(function* () {
+      if (!font && font !== null)
+        throw new Error("Arg font must be a valid object or null");
+      if (font) {
+        yield writeFile("fonts.json", JSON.stringify(font));
+      } else {
+        yield removeFile("fonts.json");
+      }
+    })();
+  }
+  function validateFont(font) {
+    if (!font || typeof font !== "object")
+      throw new Error("URL returned a null/non-object JSON");
+    if (typeof font.spec !== "number")
+      throw new Error("Invalid font 'spec' number");
+    if (font.spec !== 1)
+      throw new Error("Only fonts which follows spec:1 are supported");
+    var requiredFields = [
+      "name",
+      "main"
+    ];
+    if (requiredFields.some((f) => !font[f]))
+      throw new Error(`Font is missing one of the fields: ${requiredFields}`);
+    if (font.name.startsWith("__"))
+      throw new Error("Font names cannot start with __");
+    if (font.name in fonts)
+      throw new Error(`There is already a font named '${font.name}' installed`);
+  }
+  function saveFont(data, selected = false) {
+    return _async_to_generator(function* () {
+      var fontDefJson;
+      if (typeof data === "string") {
+        try {
+          fontDefJson = yield (yield safeFetch(data)).json();
+        } catch (e) {
+          throw new Error(`Failed to fetch fonts at ${data}`, {
+            cause: e
+          });
+        }
+      } else {
+        fontDefJson = data;
+      }
+      validateFont(fontDefJson);
+      var errors = yield allSettled(Object.entries(fontDefJson.main).map(([font, url2]) => _async_to_generator(function* () {
+        var ext = url2.split(".").pop();
+        if (ext !== "ttf" && ext !== "otf")
+          ext = "ttf";
+        var path = `downloads/fonts/${fontDefJson.name}/${font}.${ext}`;
+        if (!(yield fileExists(path)))
+          yield downloadFile(url2, path);
+      })())).then((it) => it.map((it2) => it2.status === "fulfilled" ? void 0 : it2.reason));
+      if (errors.some((it) => it))
+        throw errors;
+      fonts[fontDefJson.name] = fontDefJson;
+      if (selected)
+        writeFont(fonts[fontDefJson.name]);
+      return fontDefJson;
+    })();
+  }
+  function updateFont(fontDef) {
+    return _async_to_generator(function* () {
+      var fontDefCopy = {
+        ...fontDef
+      };
+      if (fontDefCopy.source)
+        fontDefCopy = {
+          ...yield fetch(fontDefCopy.source).then((it) => it.json()),
+          // Can't change these properties
+          name: fontDef.name,
+          source: fontDef.source
+        };
+      var selected = fonts.__selected === fontDef.name;
+      yield removeFont(fontDef.name);
+      yield saveFont(fontDefCopy, selected);
+    })();
+  }
+  function installFont(url2, selected = false) {
+    return _async_to_generator(function* () {
+      var font = yield saveFont(url2);
+      if (selected)
+        yield selectFont(font.name);
+    })();
+  }
+  function selectFont(name) {
+    return _async_to_generator(function* () {
+      if (name && !(name in fonts))
+        throw new Error("Selected font does not exist!");
+      if (name) {
+        fonts.__selected = name;
+      } else {
+        delete fonts.__selected;
+      }
+      yield writeFont(name == null ? null : fonts[name]);
+    })();
+  }
+  function removeFont(name) {
+    return _async_to_generator(function* () {
+      var selected = fonts.__selected === name;
+      if (selected)
+        yield selectFont(null);
+      delete fonts[name];
+      try {
+        yield clearFolder(`downloads/fonts/${name}`);
+      } catch (e) {
+      }
+    })();
+  }
+  function updateFonts() {
+    return _async_to_generator(function* () {
+      yield awaitStorage(fonts);
+      allSettled(Object.keys(fonts).map((name) => saveFont(fonts[name], fonts.__selected === name)));
+    })();
+  }
+  var fonts;
+  var init_fonts = __esm({
+    "src/lib/addons/fonts/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_storage();
+      init_fs();
+      init_utils();
+      fonts = wrapSync(createStorage(createMMKVBackend("BUNNY_FONTS")));
+    }
+  });
+
+  // src/core/ui/settings/pages/CloudSync/index.tsx
+  var CloudSync_exports = {};
+  __export(CloudSync_exports, {
+    default: () => CloudSync
+  });
+  function getCloudState() {
+    var s = settings;
+    s.cloudSync ??= {};
+    return s.cloudSync;
+  }
+  function cleanRepoUrl(url2) {
+    return url2.endsWith("/") ? url2 : `${url2}/`;
+  }
+  function getPluginCloudUrl(repoUrl, pluginId) {
+    return `${cleanRepoUrl(repoUrl)}#${encodeURIComponent(pluginId)}`;
+  }
+  function splitPluginCloudUrl(url2) {
+    var parsed = new URL(url2);
+    var id = decodeURIComponent(parsed.hash.replace(/^#/, ""));
+    parsed.hash = "";
+    return {
+      repoUrl: parsed.toString(),
+      id
+    };
+  }
+  function buildCloudData() {
+    var out = {
+      plugins: {},
+      themes: {},
+      fonts: {
+        installed: {},
+        custom: []
+      }
+    };
+    for (var [pluginId, state] of Object.entries(pluginSettings)) {
+      var manifest = registeredPlugins.get(pluginId);
+      var repoUrl = manifest?.parentRepository;
+      if (!repoUrl || typeof repoUrl !== "string")
+        continue;
+      out.plugins[getPluginCloudUrl(repoUrl, pluginId)] = {
+        enabled: Boolean(state?.enabled)
+      };
+    }
+    for (var [themeUrl, theme] of Object.entries(themes)) {
+      if (!themeUrl || themeUrl.startsWith("__"))
+        continue;
+      out.themes[themeUrl] = {
+        enabled: Boolean(theme?.selected)
+      };
+    }
+    for (var [fontName, font] of Object.entries(fonts)) {
+      if (fontName === "__selected")
+        continue;
+      var fontData = font;
+      var source = fontData?.source;
+      if (source && typeof source === "string") {
+        out.fonts.installed[source] = {
+          enabled: fonts.__selected === fontName
+        };
+      } else if (fontData && typeof fontData === "object") {
+        out.fonts.custom.push(fontData);
+      }
+    }
+    return out;
+  }
+  function cloudRequest(_0) {
+    return _async_to_generator(function* (path, init = {}) {
+      var cloud = getCloudState();
+      var token = cloud.token?.trim();
+      if (!token)
+        throw new Error("Not connected. Paste your Cloud Sync token first.");
+      var res = yield fetch(`${API_BASE}${path}`, {
+        ...init,
+        headers: {
+          Authorization: token,
+          "Content-Type": "application/json",
+          ...init.headers ?? {}
+        }
+      });
+      if (!res.ok) {
+        var text = yield res.text().catch(() => "");
+        throw new Error(text || `Cloud Sync request failed: ${res.status}`);
+      }
+      return res;
+    }).apply(this, arguments);
+  }
+  function pushToCloud() {
+    return _async_to_generator(function* () {
+      var data = buildCloudData();
+      yield cloudRequest("/data", {
+        method: "PUT",
+        body: JSON.stringify(data)
+      });
+      var cloud = getCloudState();
+      cloud.lastSync = (/* @__PURE__ */ new Date()).toISOString();
+      showToast("Cloud Sync: pushed to cloud", findAssetId("Check"));
+    })();
+  }
+  function pullFromCloud() {
+    return _async_to_generator(function* () {
+      var _loop2 = function* (fontUrl2, state22) {
+        try {
+          var alreadyInstalled = Object.values(fonts).some((font) => font?.source === fontUrl2);
+          if (!alreadyInstalled) {
+            yield installFont(fontUrl2, Boolean(state22.enabled));
+          }
+          if (state22.enabled) {
+            var selectedName = Object.keys(fonts).find((name) => name !== "__selected" && fonts[name]?.source === fontUrl2);
+            if (selectedName)
+              yield selectFont(selectedName);
+          }
+        } catch (e) {
+          console.warn("[CloudSync] Failed to restore font", fontUrl2, e);
+        }
+      };
+      var res = yield cloudRequest("/data", {
+        method: "GET"
+      });
+      var json = yield res.json();
+      var data = json?.data ?? json;
+      if (!data || typeof data !== "object") {
+        throw new Error("Cloud Sync returned invalid data.");
+      }
+      for (var [cloudUrl, state] of Object.entries(data.plugins ?? {})) {
+        try {
+          var { repoUrl, id } = splitPluginCloudUrl(cloudUrl);
+          if (!repoUrl || !id)
+            continue;
+          yield updateRepository(repoUrl);
+          if (!pluginSettings[id]) {
+            yield installPlugin(id, Boolean(state.enabled));
+          } else if (state.enabled) {
+            yield enablePlugin(id, true);
+          } else {
+            disablePlugin(id);
+          }
+        } catch (e) {
+          console.warn("[CloudSync] Failed to restore plugin", cloudUrl, e);
+        }
+      }
+      for (var [themeUrl, state1] of Object.entries(data.themes ?? {})) {
+        try {
+          if (!themes[themeUrl]) {
+            yield installTheme(themeUrl);
+          }
+          if (state1.enabled) {
+            yield selectTheme(themes[themeUrl]);
+          }
+        } catch (e) {
+          console.warn("[CloudSync] Failed to restore theme", themeUrl, e);
+        }
+      }
+      for (var [fontUrl, state2] of Object.entries(data.fonts?.installed ?? {}))
+        yield* _loop2(fontUrl, state2);
+      var cloud = getCloudState();
+      cloud.lastSync = (/* @__PURE__ */ new Date()).toISOString();
+      showToast("Cloud Sync: pulled from cloud", findAssetId("Check"));
+    })();
+  }
+  function pasteToken() {
+    return _async_to_generator(function* () {
+      var token = (yield clipboard.getString()).trim();
+      if (!token) {
+        showToast("Clipboard is empty");
+        return;
+      }
+      var cloud = getCloudState();
+      cloud.token = token;
+      showToast("Cloud Sync token saved", findAssetId("Check"));
+    })();
+  }
+  function disconnect() {
+    var cloud = getCloudState();
+    delete cloud.token;
+    delete cloud.lastSync;
+    showToast("Cloud Sync disconnected");
+  }
+  function CloudSync() {
+    useProxy(settings);
+    useProxy(pluginSettings);
+    useProxy(pluginRepositories);
+    useProxy(themes);
+    useProxy(fonts);
+    var [busy, setBusy] = (0, import_react3.useState)(false);
+    var cloud = getCloudState();
+    var connected = Boolean(cloud.token);
+    function run(label, fn) {
+      return _async_to_generator(function* () {
+        if (busy)
+          return;
+        setBusy(true);
+        try {
+          yield fn();
+        } catch (e) {
+          console.error(`[CloudSync] ${label} failed`, e);
+          showToast(`Cloud Sync: ${e?.message ?? "failed"}`);
+        } finally {
+          setBusy(false);
+        }
+      })();
+    }
+    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
+      style: {
+        flex: 1
+      },
+      contentContainerStyle: {
+        paddingBottom: 38
+      },
+      children: /* @__PURE__ */ jsx(Stack, {
+        style: {
+          paddingVertical: 24,
+          paddingHorizontal: 12
+        },
+        spacing: 24,
+        children: /* @__PURE__ */ jsxs(TableRowGroup, {
+          title: "Cloud Sync",
+          children: [
+            /* @__PURE__ */ jsxs(import_react_native19.View, {
+              style: {
+                paddingHorizontal: 12,
+                paddingBottom: 12
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-md/medium",
+                  color: "text-normal",
+                  children: connected ? "Connected" : "Not connected"
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/medium",
+                  color: "text-muted",
+                  children: cloud.lastSync ? `Last sync: ${cloud.lastSync}` : "Sync plugins, themes, and fonts with Cloud Sync."
+                })
+              ]
+            }),
+            /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
+              label: "Open Auth",
+              subLabel: "Opens the Cloud Sync auth flow",
+              icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                source: {
+                  uri: ICON_URL
+                }
+              }),
+              onPress: () => import_react_native19.Linking.openURL(AUTH_PAGE)
+            }),
+            /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
+              label: "Paste Token",
+              subLabel: "Copy the token after auth, then tap this",
+              icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                source: findAssetId("ClipboardListIcon")
+              }),
+              onPress: () => run("paste token", pasteToken)
+            }),
+            /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
+              label: "Pull from Cloud",
+              subLabel: "Download plugins, themes, and fonts",
+              icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                source: findAssetId("DownloadIcon") ?? findAssetId("RetryIcon")
+              }),
+              onPress: () => run("pull", pullFromCloud)
+            }),
+            /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
+              label: "Push to Cloud",
+              subLabel: "Upload current plugins, themes, and fonts",
+              icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                source: findAssetId("UploadIcon") ?? findAssetId("RetryIcon")
+              }),
+              onPress: () => run("push", pushToCloud)
+            }),
+            /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
+              label: "Disconnect",
+              subLabel: "Remove saved Cloud Sync token",
+              icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                source: findAssetId("TrashIcon") ?? findAssetId("CircleXIcon-primary")
+              }),
+              onPress: () => run("disconnect", disconnect)
+            })
+          ]
+        })
+      })
+    });
+  }
+  var import_react3, import_react_native19, API_BASE, AUTH_PAGE, ICON_URL;
+  var init_CloudSync = __esm({
+    "src/core/ui/settings/pages/CloudSync/index.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_jsxRuntime();
+      init_storage();
+      init_plugins4();
+      init_themes();
+      init_fonts();
+      init_assets();
+      init_settings();
+      init_toasts();
+      init_common();
+      init_components();
+      import_react3 = __toESM(require_react());
+      import_react_native19 = __toESM(require_react_native());
+      API_BASE = "https://revenge.nexpid.xyz/api";
+      AUTH_PAGE = "https://revenge.nexpid.xyz/cloud-sync";
+      ICON_URL = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
+    }
+  });
+
+  // src/lib/utils/isValidHttpUrl.ts
+  function isValidHttpUrl(input) {
+    var url2;
+    try {
+      url2 = new URL(input);
+    } catch (e) {
+      return false;
+    }
+    return url2.protocol === "http:" || url2.protocol === "https:";
+  }
+  var init_isValidHttpUrl = __esm({
+    "src/lib/utils/isValidHttpUrl.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+    }
+  });
+
+  // node_modules/fuzzysort/fuzzysort.js
+  var require_fuzzysort = __commonJS({
+    "node_modules/fuzzysort/fuzzysort.js"(exports, module) {
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_call_super();
+      init_class_call_check();
+      init_create_class();
+      init_inherits();
+      init_wrap_native_super();
+      ((root, UMD) => {
+        if (typeof define === "function" && define.amd)
+          define([], UMD);
+        else if (typeof module === "object" && module.exports)
+          module.exports = UMD();
+        else
+          root["fuzzysort"] = UMD();
+      })(exports, (_2) => {
+        "use strict";
+        var single = (search, target) => {
+          if (!search || !target)
+            return NULL;
+          var preparedSearch = getPreparedSearch(search);
+          if (!isPrepared(target))
+            target = getPrepared(target);
+          var searchBitflags = preparedSearch.bitflags;
+          if ((searchBitflags & target._bitflags) !== searchBitflags)
+            return NULL;
+          return algorithm(preparedSearch, target);
+        };
+        var go = (search, targets, options) => {
+          if (!search)
+            return options?.all ? all(targets, options) : noResults;
+          var preparedSearch = getPreparedSearch(search);
+          var searchBitflags = preparedSearch.bitflags;
+          var containsSpace = preparedSearch.containsSpace;
+          var threshold = denormalizeScore(options?.threshold || 0);
+          var limit = options?.limit || INFINITY;
+          var resultsLen = 0;
+          var limitedCount = 0;
+          var targetsLen = targets.length;
+          function push_result(result2) {
+            if (resultsLen < limit) {
+              q3.add(result2);
+              ++resultsLen;
+            } else {
+              ++limitedCount;
+              if (result2._score > q3.peek()._score)
+                q3.replaceTop(result2);
+            }
+          }
+          if (options?.key) {
+            var key = options.key;
+            for (var i = 0; i < targetsLen; ++i) {
+              var obj = targets[i];
+              var target = getValue(obj, key);
+              if (!target)
+                continue;
+              if (!isPrepared(target))
+                target = getPrepared(target);
+              if ((searchBitflags & target._bitflags) !== searchBitflags)
+                continue;
+              var result = algorithm(preparedSearch, target);
+              if (result === NULL)
+                continue;
+              if (result._score < threshold)
+                continue;
+              result.obj = obj;
+              push_result(result);
+            }
+          } else if (options?.keys) {
+            var keys = options.keys;
+            var keysLen = keys.length;
+            outer:
+              for (var i = 0; i < targetsLen; ++i) {
+                var obj = targets[i];
+                {
+                  var keysBitflags = 0;
+                  for (var keyI = 0; keyI < keysLen; ++keyI) {
+                    var key = keys[keyI];
+                    var target = getValue(obj, key);
+                    if (!target) {
+                      tmpTargets[keyI] = noTarget;
+                      continue;
+                    }
+                    if (!isPrepared(target))
+                      target = getPrepared(target);
+                    tmpTargets[keyI] = target;
+                    keysBitflags |= target._bitflags;
+                  }
+                  if ((searchBitflags & keysBitflags) !== searchBitflags)
+                    continue;
+                }
+                if (containsSpace)
+                  for (var i1 = 0; i1 < preparedSearch.spaceSearches.length; i1++)
+                    keysSpacesBestScores[i1] = NEGATIVE_INFINITY;
+                for (var keyI = 0; keyI < keysLen; ++keyI) {
+                  target = tmpTargets[keyI];
+                  if (target === noTarget) {
+                    tmpResults[keyI] = noTarget;
+                    continue;
+                  }
+                  tmpResults[keyI] = algorithm(
+                    preparedSearch,
+                    target,
+                    /*allowSpaces=*/
+                    false,
+                    /*allowPartialMatch=*/
+                    containsSpace
+                  );
+                  if (tmpResults[keyI] === NULL) {
+                    tmpResults[keyI] = noTarget;
+                    continue;
+                  }
+                  if (containsSpace)
+                    for (var i2 = 0; i2 < preparedSearch.spaceSearches.length; i2++) {
+                      if (allowPartialMatchScores[i2] > -1e3) {
+                        if (keysSpacesBestScores[i2] > NEGATIVE_INFINITY) {
+                          var tmp = (keysSpacesBestScores[i2] + allowPartialMatchScores[i2]) / 4;
+                          if (tmp > keysSpacesBestScores[i2])
+                            keysSpacesBestScores[i2] = tmp;
+                        }
+                      }
+                      if (allowPartialMatchScores[i2] > keysSpacesBestScores[i2])
+                        keysSpacesBestScores[i2] = allowPartialMatchScores[i2];
+                    }
+                }
+                if (containsSpace) {
+                  for (var i3 = 0; i3 < preparedSearch.spaceSearches.length; i3++) {
+                    if (keysSpacesBestScores[i3] === NEGATIVE_INFINITY)
+                      continue outer;
+                  }
+                } else {
+                  var hasAtLeast1Match = false;
+                  for (var i4 = 0; i4 < keysLen; i4++) {
+                    if (tmpResults[i4]._score !== NEGATIVE_INFINITY) {
+                      hasAtLeast1Match = true;
+                      break;
+                    }
+                  }
+                  if (!hasAtLeast1Match)
+                    continue;
+                }
+                var objResults = new KeysResult(keysLen);
+                for (var i5 = 0; i5 < keysLen; i5++) {
+                  objResults[i5] = tmpResults[i5];
+                }
+                if (containsSpace) {
+                  var score = 0;
+                  for (var i6 = 0; i6 < preparedSearch.spaceSearches.length; i6++)
+                    score += keysSpacesBestScores[i6];
+                } else {
+                  var score = NEGATIVE_INFINITY;
+                  for (var i7 = 0; i7 < keysLen; i7++) {
+                    var result = objResults[i7];
+                    if (result._score > -1e3) {
+                      if (score > NEGATIVE_INFINITY) {
+                        var tmp = (score + result._score) / 4;
+                        if (tmp > score)
+                          score = tmp;
+                      }
+                    }
+                    if (result._score > score)
+                      score = result._score;
+                  }
+                }
+                objResults.obj = obj;
+                objResults._score = score;
+                if (options?.scoreFn) {
+                  score = options.scoreFn(objResults);
+                  if (!score)
+                    continue;
+                  score = denormalizeScore(score);
+                  objResults._score = score;
+                }
+                if (score < threshold)
+                  continue;
+                push_result(objResults);
+              }
+          } else {
+            for (var i = 0; i < targetsLen; ++i) {
+              var target = targets[i];
+              if (!target)
+                continue;
+              if (!isPrepared(target))
+                target = getPrepared(target);
+              if ((searchBitflags & target._bitflags) !== searchBitflags)
+                continue;
+              var result = algorithm(preparedSearch, target);
+              if (result === NULL)
+                continue;
+              if (result._score < threshold)
+                continue;
+              push_result(result);
+            }
+          }
+          if (resultsLen === 0)
+            return noResults;
+          var results = new Array(resultsLen);
+          for (var i = resultsLen - 1; i >= 0; --i)
+            results[i] = q3.poll();
+          results.total = resultsLen + limitedCount;
+          return results;
+        };
+        var highlight = (result, open = "<b>", close = "</b>") => {
+          var callback = typeof open === "function" ? open : void 0;
+          var target = result.target;
+          var targetLen = target.length;
+          var indexes = result.indexes;
+          var highlighted = "";
+          var matchI = 0;
+          var indexesI = 0;
+          var opened = false;
+          var parts = [];
+          for (var i = 0; i < targetLen; ++i) {
+            var char = target[i];
+            if (indexes[indexesI] === i) {
+              ++indexesI;
+              if (!opened) {
+                opened = true;
+                if (callback) {
+                  parts.push(highlighted);
+                  highlighted = "";
+                } else {
+                  highlighted += open;
+                }
+              }
+              if (indexesI === indexes.length) {
+                if (callback) {
+                  highlighted += char;
+                  parts.push(callback(highlighted, matchI++));
+                  highlighted = "";
+                  parts.push(target.substr(i + 1));
+                } else {
+                  highlighted += char + close + target.substr(i + 1);
+                }
+                break;
+              }
+            } else {
+              if (opened) {
+                opened = false;
+                if (callback) {
+                  parts.push(callback(highlighted, matchI++));
+                  highlighted = "";
+                } else {
+                  highlighted += close;
+                }
+              }
+            }
+            highlighted += char;
+          }
+          return callback ? parts : highlighted;
+        };
+        var prepare = (target) => {
+          if (typeof target === "number")
+            target = "" + target;
+          else if (typeof target !== "string")
+            target = "";
+          var info = prepareLowerInfo(target);
+          return new_result(target, {
+            _targetLower: info._lower,
+            _targetLowerCodes: info.lowerCodes,
+            _bitflags: info.bitflags
+          });
+        };
+        var cleanup = () => {
+          preparedCache.clear();
+          preparedSearchCache.clear();
+        };
+        var Result = /* @__PURE__ */ function() {
+          function Result2() {
+            _class_call_check(this, Result2);
+          }
+          _create_class(Result2, [
+            {
+              key: "indexes",
+              get: function get() {
+                return this._indexes.slice(0, this._indexes.len).sort((a, b3) => a - b3);
+              }
+            },
+            {
+              key: "indexes",
+              set: function set(indexes) {
+                return this._indexes = indexes;
+              }
+            },
+            {
+              key: "highlight",
+              value: function value(open, close) {
+                return highlight(this, open, close);
+              }
+            },
+            {
+              key: "score",
+              get: function get() {
+                return normalizeScore(this._score);
+              }
+            },
+            {
+              key: "score",
+              set: function set(score) {
+                this._score = denormalizeScore(score);
+              }
+            }
+          ]);
+          return Result2;
+        }();
+        var KeysResult = /* @__PURE__ */ function(Array1) {
+          _inherits(KeysResult2, Array1);
+          function KeysResult2() {
+            _class_call_check(this, KeysResult2);
+            return _call_super(this, KeysResult2, arguments);
+          }
+          _create_class(KeysResult2, [
+            {
+              key: "score",
+              get: function get() {
+                return normalizeScore(this._score);
+              }
+            },
+            {
+              key: "score",
+              set: function set(score) {
+                this._score = denormalizeScore(score);
+              }
+            }
+          ]);
+          return KeysResult2;
+        }(_wrap_native_super(Array));
+        var new_result = (target, options) => {
+          var result = new Result();
+          result["target"] = target;
+          result["obj"] = options.obj ?? NULL;
+          result._score = options._score ?? NEGATIVE_INFINITY;
+          result._indexes = options._indexes ?? [];
+          result._targetLower = options._targetLower ?? "";
+          result._targetLowerCodes = options._targetLowerCodes ?? NULL;
+          result._nextBeginningIndexes = options._nextBeginningIndexes ?? NULL;
+          result._bitflags = options._bitflags ?? 0;
+          return result;
+        };
+        var normalizeScore = (score) => {
+          if (score === NEGATIVE_INFINITY)
+            return 0;
+          if (score > 1)
+            return score;
+          return Math.E ** (((-score + 1) ** 0.04307 - 1) * -2);
+        };
+        var denormalizeScore = (normalizedScore) => {
+          if (normalizedScore === 0)
+            return NEGATIVE_INFINITY;
+          if (normalizedScore > 1)
+            return normalizedScore;
+          return 1 - Math.pow(Math.log(normalizedScore) / -2 + 1, 1 / 0.04307);
+        };
+        var prepareSearch = (search) => {
+          if (typeof search === "number")
+            search = "" + search;
+          else if (typeof search !== "string")
+            search = "";
+          search = search.trim();
+          var info = prepareLowerInfo(search);
+          var spaceSearches = [];
+          if (info.containsSpace) {
+            var searches = search.split(/\s+/);
+            searches = [
+              ...new Set(searches)
+            ];
+            for (var i = 0; i < searches.length; i++) {
+              if (searches[i] === "")
+                continue;
+              var _info = prepareLowerInfo(searches[i]);
+              spaceSearches.push({
+                lowerCodes: _info.lowerCodes,
+                _lower: searches[i].toLowerCase(),
+                containsSpace: false
+              });
+            }
+          }
+          return {
+            lowerCodes: info.lowerCodes,
+            _lower: info._lower,
+            containsSpace: info.containsSpace,
+            bitflags: info.bitflags,
+            spaceSearches
+          };
+        };
+        var getPrepared = (target) => {
+          if (target.length > 999)
+            return prepare(target);
+          var targetPrepared = preparedCache.get(target);
+          if (targetPrepared !== void 0)
+            return targetPrepared;
+          targetPrepared = prepare(target);
+          preparedCache.set(target, targetPrepared);
+          return targetPrepared;
+        };
+        var getPreparedSearch = (search) => {
+          if (search.length > 999)
+            return prepareSearch(search);
+          var searchPrepared = preparedSearchCache.get(search);
+          if (searchPrepared !== void 0)
+            return searchPrepared;
+          searchPrepared = prepareSearch(search);
+          preparedSearchCache.set(search, searchPrepared);
+          return searchPrepared;
+        };
+        var all = (targets, options) => {
+          var results = [];
+          results.total = targets.length;
+          var limit = options?.limit || INFINITY;
+          if (options?.key) {
+            for (var i = 0; i < targets.length; i++) {
+              var obj = targets[i];
+              var target = getValue(obj, options.key);
+              if (target == NULL)
+                continue;
+              if (!isPrepared(target))
+                target = getPrepared(target);
+              var result = new_result(target.target, {
+                _score: target._score,
+                obj
+              });
+              results.push(result);
+              if (results.length >= limit)
+                return results;
+            }
+          } else if (options?.keys) {
+            for (var i = 0; i < targets.length; i++) {
+              var obj = targets[i];
+              var objResults = new KeysResult(options.keys.length);
+              for (var keyI = options.keys.length - 1; keyI >= 0; --keyI) {
+                var target = getValue(obj, options.keys[keyI]);
+                if (!target) {
+                  objResults[keyI] = noTarget;
+                  continue;
+                }
+                if (!isPrepared(target))
+                  target = getPrepared(target);
+                target._score = NEGATIVE_INFINITY;
+                target._indexes.len = 0;
+                objResults[keyI] = target;
+              }
+              objResults.obj = obj;
+              objResults._score = NEGATIVE_INFINITY;
+              results.push(objResults);
+              if (results.length >= limit)
+                return results;
+            }
+          } else {
+            for (var i = 0; i < targets.length; i++) {
+              var target = targets[i];
+              if (target == NULL)
+                continue;
+              if (!isPrepared(target))
+                target = getPrepared(target);
+              target._score = NEGATIVE_INFINITY;
+              target._indexes.len = 0;
+              results.push(target);
+              if (results.length >= limit)
+                return results;
+            }
+          }
+          return results;
+        };
+        var algorithm = (preparedSearch, prepared, allowSpaces = false, allowPartialMatch = false) => {
+          if (allowSpaces === false && preparedSearch.containsSpace)
+            return algorithmSpaces(preparedSearch, prepared, allowPartialMatch);
+          var searchLower = preparedSearch._lower;
+          var searchLowerCodes = preparedSearch.lowerCodes;
+          var searchLowerCode = searchLowerCodes[0];
+          var targetLowerCodes = prepared._targetLowerCodes;
+          var searchLen = searchLowerCodes.length;
+          var targetLen = targetLowerCodes.length;
+          var searchI = 0;
+          var targetI = 0;
+          var matchesSimpleLen = 0;
+          for (; ; ) {
+            var isMatch = searchLowerCode === targetLowerCodes[targetI];
+            if (isMatch) {
+              matchesSimple[matchesSimpleLen++] = targetI;
+              ++searchI;
+              if (searchI === searchLen)
+                break;
+              searchLowerCode = searchLowerCodes[searchI];
+            }
+            ++targetI;
+            if (targetI >= targetLen)
+              return NULL;
+          }
+          var searchI = 0;
+          var successStrict = false;
+          var matchesStrictLen = 0;
+          var nextBeginningIndexes = prepared._nextBeginningIndexes;
+          if (nextBeginningIndexes === NULL)
+            nextBeginningIndexes = prepared._nextBeginningIndexes = prepareNextBeginningIndexes(prepared.target);
+          targetI = matchesSimple[0] === 0 ? 0 : nextBeginningIndexes[matchesSimple[0] - 1];
+          var backtrackCount = 0;
+          if (targetI !== targetLen)
+            for (; ; ) {
+              if (targetI >= targetLen) {
+                if (searchI <= 0)
+                  break;
+                ++backtrackCount;
+                if (backtrackCount > 200)
+                  break;
+                --searchI;
+                var lastMatch = matchesStrict[--matchesStrictLen];
+                targetI = nextBeginningIndexes[lastMatch];
+              } else {
+                var isMatch = searchLowerCodes[searchI] === targetLowerCodes[targetI];
+                if (isMatch) {
+                  matchesStrict[matchesStrictLen++] = targetI;
+                  ++searchI;
+                  if (searchI === searchLen) {
+                    successStrict = true;
+                    break;
+                  }
+                  ++targetI;
+                } else {
+                  targetI = nextBeginningIndexes[targetI];
+                }
+              }
+            }
+          var substringIndex = searchLen <= 1 ? -1 : prepared._targetLower.indexOf(searchLower, matchesSimple[0]);
+          var isSubstring = !!~substringIndex;
+          var isSubstringBeginning = !isSubstring ? false : substringIndex === 0 || prepared._nextBeginningIndexes[substringIndex - 1] === substringIndex;
+          if (isSubstring && !isSubstringBeginning) {
+            for (var i = 0; i < nextBeginningIndexes.length; i = nextBeginningIndexes[i]) {
+              if (i <= substringIndex)
+                continue;
+              for (var s = 0; s < searchLen; s++)
+                if (searchLowerCodes[s] !== prepared._targetLowerCodes[i + s])
+                  break;
+              if (s === searchLen) {
+                substringIndex = i;
+                isSubstringBeginning = true;
+                break;
+              }
+            }
+          }
+          var calculateScore = (matches) => {
+            var score2 = 0;
+            var extraMatchGroupCount = 0;
+            for (var i2 = 1; i2 < searchLen; ++i2) {
+              if (matches[i2] - matches[i2 - 1] !== 1) {
+                score2 -= matches[i2];
+                ++extraMatchGroupCount;
+              }
+            }
+            var unmatchedDistance = matches[searchLen - 1] - matches[0] - (searchLen - 1);
+            score2 -= (12 + unmatchedDistance) * extraMatchGroupCount;
+            if (matches[0] !== 0)
+              score2 -= matches[0] * matches[0] * 0.2;
+            if (!successStrict) {
+              score2 *= 1e3;
+            } else {
+              var uniqueBeginningIndexes = 1;
+              for (var i2 = nextBeginningIndexes[0]; i2 < targetLen; i2 = nextBeginningIndexes[i2])
+                ++uniqueBeginningIndexes;
+              if (uniqueBeginningIndexes > 24)
+                score2 *= (uniqueBeginningIndexes - 24) * 10;
+            }
+            score2 -= (targetLen - searchLen) / 2;
+            if (isSubstring)
+              score2 /= 1 + searchLen * searchLen * 1;
+            if (isSubstringBeginning)
+              score2 /= 1 + searchLen * searchLen * 1;
+            score2 -= (targetLen - searchLen) / 2;
+            return score2;
+          };
+          if (!successStrict) {
+            if (isSubstring)
+              for (var i = 0; i < searchLen; ++i)
+                matchesSimple[i] = substringIndex + i;
+            var matchesBest = matchesSimple;
+            var score = calculateScore(matchesBest);
+          } else {
+            if (isSubstringBeginning) {
+              for (var i = 0; i < searchLen; ++i)
+                matchesSimple[i] = substringIndex + i;
+              var matchesBest = matchesSimple;
+              var score = calculateScore(matchesSimple);
+            } else {
+              var matchesBest = matchesStrict;
+              var score = calculateScore(matchesStrict);
+            }
+          }
+          prepared._score = score;
+          for (var i = 0; i < searchLen; ++i)
+            prepared._indexes[i] = matchesBest[i];
+          prepared._indexes.len = searchLen;
+          var result = new Result();
+          result.target = prepared.target;
+          result._score = prepared._score;
+          result._indexes = prepared._indexes;
+          return result;
+        };
+        var algorithmSpaces = (preparedSearch, target, allowPartialMatch) => {
+          var seen_indexes = /* @__PURE__ */ new Set();
+          var score = 0;
+          var result = NULL;
+          var first_seen_index_last_search = 0;
+          var searches = preparedSearch.spaceSearches;
+          var searchesLen = searches.length;
+          var changeslen = 0;
+          var resetNextBeginningIndexes = () => {
+            for (var i3 = changeslen - 1; i3 >= 0; i3--)
+              target._nextBeginningIndexes[nextBeginningIndexesChanges[i3 * 2 + 0]] = nextBeginningIndexesChanges[i3 * 2 + 1];
+          };
+          var hasAtLeast1Match = false;
+          for (var i = 0; i < searchesLen; ++i) {
+            allowPartialMatchScores[i] = NEGATIVE_INFINITY;
+            var search = searches[i];
+            result = algorithm(search, target);
+            if (allowPartialMatch) {
+              if (result === NULL)
+                continue;
+              hasAtLeast1Match = true;
+            } else {
+              if (result === NULL) {
+                resetNextBeginningIndexes();
+                return NULL;
+              }
+            }
+            var isTheLastSearch = i === searchesLen - 1;
+            if (!isTheLastSearch) {
+              var indexes = result._indexes;
+              var indexesIsConsecutiveSubstring = true;
+              for (var i1 = 0; i1 < indexes.len - 1; i1++) {
+                if (indexes[i1 + 1] - indexes[i1] !== 1) {
+                  indexesIsConsecutiveSubstring = false;
+                  break;
+                }
+              }
+              if (indexesIsConsecutiveSubstring) {
+                var newBeginningIndex = indexes[indexes.len - 1] + 1;
+                var toReplace = target._nextBeginningIndexes[newBeginningIndex - 1];
+                for (var i2 = newBeginningIndex - 1; i2 >= 0; i2--) {
+                  if (toReplace !== target._nextBeginningIndexes[i2])
+                    break;
+                  target._nextBeginningIndexes[i2] = newBeginningIndex;
+                  nextBeginningIndexesChanges[changeslen * 2 + 0] = i2;
+                  nextBeginningIndexesChanges[changeslen * 2 + 1] = toReplace;
+                  changeslen++;
+                }
+              }
+            }
+            score += result._score / searchesLen;
+            allowPartialMatchScores[i] = result._score / searchesLen;
+            if (result._indexes[0] < first_seen_index_last_search) {
+              score -= (first_seen_index_last_search - result._indexes[0]) * 2;
+            }
+            first_seen_index_last_search = result._indexes[0];
+            for (var j = 0; j < result._indexes.len; ++j)
+              seen_indexes.add(result._indexes[j]);
+          }
+          if (allowPartialMatch && !hasAtLeast1Match)
+            return NULL;
+          resetNextBeginningIndexes();
+          var allowSpacesResult = algorithm(
+            preparedSearch,
+            target,
+            /*allowSpaces=*/
+            true
+          );
+          if (allowSpacesResult !== NULL && allowSpacesResult._score > score) {
+            if (allowPartialMatch) {
+              for (var i = 0; i < searchesLen; ++i) {
+                allowPartialMatchScores[i] = allowSpacesResult._score / searchesLen;
+              }
+            }
+            return allowSpacesResult;
+          }
+          if (allowPartialMatch)
+            result = target;
+          result._score = score;
+          var i = 0;
+          for (var index of seen_indexes)
+            result._indexes[i++] = index;
+          result._indexes.len = i;
+          return result;
+        };
+        var remove_accents = (str) => str.replace(RegExp("\\p{Script=Latin}+", "gu"), (match) => match.normalize("NFD")).replace(/[\u0300-\u036f]/g, "");
+        var prepareLowerInfo = (str) => {
+          str = remove_accents(str);
+          var strLen = str.length;
+          var lower = str.toLowerCase();
+          var lowerCodes = [];
+          var bitflags = 0;
+          var containsSpace = false;
+          for (var i = 0; i < strLen; ++i) {
+            var lowerCode = lowerCodes[i] = lower.charCodeAt(i);
+            if (lowerCode === 32) {
+              containsSpace = true;
+              continue;
+            }
+            var bit = lowerCode >= 97 && lowerCode <= 122 ? lowerCode - 97 : lowerCode >= 48 && lowerCode <= 57 ? 26 : lowerCode <= 127 ? 30 : 31;
+            bitflags |= 1 << bit;
+          }
+          return {
+            lowerCodes,
+            bitflags,
+            containsSpace,
+            _lower: lower
+          };
+        };
+        var prepareBeginningIndexes = (target) => {
+          var targetLen = target.length;
+          var beginningIndexes = [];
+          var beginningIndexesLen = 0;
+          var wasUpper = false;
+          var wasAlphanum = false;
+          for (var i = 0; i < targetLen; ++i) {
+            var targetCode = target.charCodeAt(i);
+            var isUpper = targetCode >= 65 && targetCode <= 90;
+            var isAlphanum = isUpper || targetCode >= 97 && targetCode <= 122 || targetCode >= 48 && targetCode <= 57;
+            var isBeginning = isUpper && !wasUpper || !wasAlphanum || !isAlphanum;
+            wasUpper = isUpper;
+            wasAlphanum = isAlphanum;
+            if (isBeginning)
+              beginningIndexes[beginningIndexesLen++] = i;
+          }
+          return beginningIndexes;
+        };
+        var prepareNextBeginningIndexes = (target) => {
+          target = remove_accents(target);
+          var targetLen = target.length;
+          var beginningIndexes = prepareBeginningIndexes(target);
+          var nextBeginningIndexes = [];
+          var lastIsBeginning = beginningIndexes[0];
+          var lastIsBeginningI = 0;
+          for (var i = 0; i < targetLen; ++i) {
+            if (lastIsBeginning > i) {
+              nextBeginningIndexes[i] = lastIsBeginning;
+            } else {
+              lastIsBeginning = beginningIndexes[++lastIsBeginningI];
+              nextBeginningIndexes[i] = lastIsBeginning === void 0 ? targetLen : lastIsBeginning;
+            }
+          }
+          return nextBeginningIndexes;
+        };
+        var preparedCache = /* @__PURE__ */ new Map();
+        var preparedSearchCache = /* @__PURE__ */ new Map();
+        var matchesSimple = [];
+        var matchesStrict = [];
+        var nextBeginningIndexesChanges = [];
+        var keysSpacesBestScores = [];
+        var allowPartialMatchScores = [];
+        var tmpTargets = [];
+        var tmpResults = [];
+        var getValue = (obj, prop) => {
+          var tmp = obj[prop];
+          if (tmp !== void 0)
+            return tmp;
+          if (typeof prop === "function")
+            return prop(obj);
+          var segs = prop;
+          if (!Array.isArray(prop))
+            segs = prop.split(".");
+          var len = segs.length;
+          var i = -1;
+          while (obj && ++i < len)
+            obj = obj[segs[i]];
+          return obj;
+        };
+        var isPrepared = (x2) => {
+          return typeof x2 === "object" && typeof x2._bitflags === "number";
+        };
+        var INFINITY = Infinity;
+        var NEGATIVE_INFINITY = -INFINITY;
+        var noResults = [];
+        noResults.total = 0;
+        var NULL = null;
+        var noTarget = prepare("");
+        var fastpriorityqueue = (r) => {
+          var e = [], o = 0, a = {}, v2 = (r2) => {
+            for (var a2 = 0, v3 = e[a2], c2 = 1; c2 < o; ) {
+              var s = c2 + 1;
+              a2 = c2, s < o && e[s]._score < e[c2]._score && (a2 = s), e[a2 - 1 >> 1] = e[a2], c2 = 1 + (a2 << 1);
+            }
+            for (var f = a2 - 1 >> 1; a2 > 0 && v3._score < e[f]._score; f = (a2 = f) - 1 >> 1)
+              e[a2] = e[f];
+            e[a2] = v3;
+          };
+          return a.add = (r2) => {
+            var a2 = o;
+            e[o++] = r2;
+            for (var v3 = a2 - 1 >> 1; a2 > 0 && r2._score < e[v3]._score; v3 = (a2 = v3) - 1 >> 1)
+              e[a2] = e[v3];
+            e[a2] = r2;
+          }, a.poll = (r2) => {
+            if (0 !== o) {
+              var a2 = e[0];
+              return e[0] = e[--o], v2(), a2;
+            }
+          }, a.peek = (r2) => {
+            if (0 !== o)
+              return e[0];
+          }, a.replaceTop = (r2) => {
+            e[0] = r2, v2();
+          }, a;
+        };
+        var q3 = fastpriorityqueue();
+        return {
+          "single": single,
+          "go": go,
+          "prepare": prepare,
+          "cleanup": cleanup
+        };
+      });
+    }
+  });
+
+  // src/core/ui/components/AddonPage.tsx
+  function InputAlert2(props) {
+    var [value, setValue] = React.useState("");
+    var [error, setError] = React.useState("");
+    var [isFetching, setIsFetching] = React.useState(false);
+    function onConfirmWrapper() {
+      setIsFetching(true);
+      props.fetchFn(value).then(() => dismissAlert("AddonInputAlert")).catch((e) => e instanceof Error ? setError(e.message) : String(e)).finally(() => setIsFetching(false));
+    }
+    return /* @__PURE__ */ jsx(AlertModal, {
+      title: props.label,
+      content: "Type in the source URL you want to install from:",
+      extraContent: /* @__PURE__ */ jsxs(Stack, {
+        style: {
+          marginTop: -12
+        },
+        children: [
+          /* @__PURE__ */ jsx(TextInput, {
+            autoFocus: true,
+            isClearable: true,
+            value,
+            onChange: (v2) => {
+              setValue(v2);
+              if (error)
+                setError("");
+            },
+            returnKeyType: "done",
+            onSubmitEditing: onConfirmWrapper,
+            state: error ? "error" : void 0,
+            errorMessage: error || void 0
+          }),
+          /* @__PURE__ */ jsx(import_react_native20.ScrollView, {
+            horizontal: true,
+            showsHorizontalScrollIndicator: false,
+            style: {
+              gap: 8
+            },
+            children: /* @__PURE__ */ jsx(Button, {
+              size: "sm",
+              variant: "tertiary",
+              text: "Import from clipboard",
+              icon: findAssetId("ClipboardListIcon"),
+              onPress: () => clipboard.getString().then((str) => setValue(str))
+            })
+          })
+        ]
+      }),
+      actions: /* @__PURE__ */ jsxs(Stack, {
+        children: [
+          /* @__PURE__ */ jsx(Button, {
+            loading: isFetching,
+            text: "Install",
+            variant: "primary",
+            disabled: !value || !isValidHttpUrl(value),
+            onPress: onConfirmWrapper
+          }),
+          /* @__PURE__ */ jsx(AlertActionButton, {
+            disabled: isFetching,
+            text: "Cancel",
+            variant: "secondary"
+          })
+        ]
+      })
+    });
+  }
+  function AddonPage({ CardComponent, ...props }) {
+    var [search, setSearch] = React.useState("");
+    var [sortFn, setSortFn] = React.useState(() => null);
+    var { bottom: bottomInset } = useSafeAreaInsets();
+    var navigation2 = NavigationNative.useNavigation();
+    (0, import_react4.useEffect)(() => {
+      if (props.OptionsActionSheetComponent) {
+        navigation2.setOptions({
+          headerRight: () => /* @__PURE__ */ jsx(IconButton, {
+            size: "sm",
+            variant: "secondary",
+            icon: findAssetId("MoreHorizontalIcon"),
+            onPress: () => showSheet("AddonMoreSheet", props.OptionsActionSheetComponent)
+          })
+        });
+      }
+    }, [
+      navigation2
+    ]);
+    var results = (0, import_react4.useMemo)(() => {
+      var values = props.items;
+      if (props.resolveItem)
+        values = values.map(props.resolveItem).filter(isNotNil);
+      var items = values.filter((i) => isNotNil(i) && typeof i === "object");
+      if (!search && sortFn)
+        items.sort(sortFn);
+      return import_fuzzysort.default.go(search, items, {
+        keys: props.searchKeywords,
+        all: true
+      });
+    }, [
+      props.items,
+      sortFn,
+      search
+    ]);
+    var onInstallPress = (0, import_react4.useCallback)(() => {
+      if (!props.installAction)
+        return () => {
+        };
+      var { label, onPress, fetchFn } = props.installAction;
+      if (fetchFn) {
+        openAlert("AddonInputAlert", /* @__PURE__ */ jsx(InputAlert2, {
+          label: label ?? "Install",
+          fetchFn
+        }));
+      } else {
+        onPress?.();
+      }
+    }, []);
+    if (results.length === 0 && !search) {
+      return /* @__PURE__ */ jsxs(import_react_native20.View, {
+        style: {
+          gap: 32,
+          flexGrow: 1,
+          justifyContent: "center",
+          alignItems: "center"
+        },
+        children: [
+          /* @__PURE__ */ jsxs(import_react_native20.View, {
+            style: {
+              gap: 8,
+              alignItems: "center"
+            },
+            children: [
+              /* @__PURE__ */ jsx(import_react_native20.Image, {
+                source: findAssetId("empty_quick_switcher")
+              }),
+              /* @__PURE__ */ jsx(Text, {
+                variant: "text-lg/semibold",
+                color: "text-default",
+                children: "Oops! Nothing to see here\u2026 yet!"
+              })
+            ]
+          }),
+          /* @__PURE__ */ jsx(Button, {
+            size: "lg",
+            icon: findAssetId("DownloadIcon"),
+            text: props.installAction?.label ?? "Install",
+            onPress: onInstallPress
+          })
+        ]
+      });
+    }
+    var headerElement = /* @__PURE__ */ jsxs(import_react_native20.View, {
+      style: {
+        paddingBottom: 8
+      },
+      children: [
+        settings.safeMode?.enabled && /* @__PURE__ */ jsxs(import_react_native20.View, {
+          style: {
+            marginBottom: 10
+          },
+          children: [
+            /* @__PURE__ */ jsx(HelpMessage, {
+              messageType: 0,
+              children: props.safeModeHint?.message
+            }),
+            props.safeModeHint?.footer
+          ]
+        }),
+        /* @__PURE__ */ jsxs(import_react_native20.View, {
+          style: {
+            flexDirection: "row",
+            gap: 8
+          },
+          children: [
+            /* @__PURE__ */ jsx(Search_default, {
+              style: {
+                flexGrow: 1
+              },
+              isRound: !!props.sortOptions,
+              onChangeText: (v2) => setSearch(v2)
+            }),
+            props.sortOptions && /* @__PURE__ */ jsx(IconButton, {
+              icon: findAssetId("ArrowsUpDownIcon"),
+              variant: "tertiary",
+              disabled: !!search,
+              onPress: () => showSimpleActionSheet2({
+                key: "AddonListSortOptions",
+                header: {
+                  title: "Sort Options",
+                  onClose: () => hideActionSheet("AddonListSortOptions")
+                },
+                options: Object.entries(props.sortOptions).map(([name, fn]) => ({
+                  label: name,
+                  onPress: () => setSortFn(() => fn)
+                }))
+              })
+            })
+          ]
+        }),
+        props.ListHeaderComponent && /* @__PURE__ */ jsx(props.ListHeaderComponent, {})
+      ]
+    });
+    return /* @__PURE__ */ jsxs(ErrorBoundary, {
+      children: [
+        /* @__PURE__ */ jsx(FlashList, {
+          data: results,
+          extraData: search,
+          estimatedItemSize: 136,
+          ListHeaderComponent: headerElement,
+          ListEmptyComponent: () => /* @__PURE__ */ jsxs(import_react_native20.View, {
+            style: {
+              gap: 12,
+              padding: 12,
+              alignItems: "center"
+            },
+            children: [
+              /* @__PURE__ */ jsx(import_react_native20.Image, {
+                source: findAssetId("devices_not_found")
+              }),
+              /* @__PURE__ */ jsx(Text, {
+                variant: "text-lg/semibold",
+                color: "text-default",
+                children: "Hmmm... could not find that!"
+              })
+            ]
+          }),
+          contentContainerStyle: {
+            padding: 8,
+            paddingHorizontal: 12,
+            paddingBottom: 90
+          },
+          ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native20.View, {
+            style: {
+              height: 8
+            }
+          }),
+          ListFooterComponent: props.ListFooterComponent,
+          renderItem: ({ item }) => /* @__PURE__ */ jsx(CardComponent, {
+            item: item.obj,
+            result: item
+          })
+        }),
+        props.installAction && /* @__PURE__ */ jsx(FloatingActionButton, {
+          positionBottom: bottomInset + 8,
+          icon: findAssetId("PlusLargeIcon"),
+          onPress: onInstallPress
+        })
+      ]
+    });
+  }
+  var import_fuzzysort, import_react4, import_react_native20, showSimpleActionSheet2, hideActionSheet;
+  var init_AddonPage = __esm({
+    "src/core/ui/components/AddonPage.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      init_assets();
+      init_settings();
+      init_alerts();
+      init_sheets();
+      init_isValidHttpUrl();
+      init_lazy();
+      init_metro();
+      init_common();
+      init_components();
+      init_components2();
+      init_dist();
+      import_fuzzysort = __toESM(require_fuzzysort());
+      import_react4 = __toESM(require_react());
+      import_react_native20 = __toESM(require_react_native());
+      ({ showSimpleActionSheet: showSimpleActionSheet2, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
+    }
+  });
+
+  // src/core/ui/settings/pages/Plugins/usePluginCardStyles.ts
+  var usePluginCardStyles;
+  var init_usePluginCardStyles = __esm({
+    "src/core/ui/settings/pages/Plugins/usePluginCardStyles.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_common();
+      init_styles();
+      usePluginCardStyles = createStyles({
+        smallIcon: {
+          tintColor: tokens.colors.LOGO_PRIMARY,
+          height: 18,
+          width: 18
+        },
+        badgeIcon: {
+          tintColor: tokens.colors.LOGO_PRIMARY,
+          height: 12,
+          width: 12
+        },
+        badgesContainer: {
+          flexWrap: "wrap",
+          flexDirection: "row",
+          gap: 6,
+          borderRadius: 6,
+          padding: 4
+        }
+      });
+    }
+  });
+
   // src/core/ui/settings/pages/Plugins/components/PluginCard.tsx
   function getHighlightColor() {
     return (0, import_chroma_js4.default)(tokens.unsafe_rawColors.YELLOW_300).alpha(0.3).hex();
@@ -9557,14 +10009,14 @@
       variant: "heading-lg/semibold",
       children: highlightedNode.length ? highlightedNode : plugin.name
     });
-    return /* @__PURE__ */ jsxs(import_react_native20.View, {
+    return /* @__PURE__ */ jsxs(import_react_native21.View, {
       style: {
         flexDirection: "row",
         alignItems: "center",
         gap: 6
       },
       children: [
-        icon && /* @__PURE__ */ jsx(import_react_native20.Image, {
+        icon && /* @__PURE__ */ jsx(import_react_native21.Image, {
           style: styles.smallIcon,
           source: icon
         }),
@@ -9585,7 +10037,7 @@
     }, i));
     var badges = plugin.getBadges();
     var authorText = highlightedNode.length > 0 ? highlightedNode : plugin.authors.map((a) => a.name).join(", ");
-    return /* @__PURE__ */ jsxs(import_react_native20.View, {
+    return /* @__PURE__ */ jsxs(import_react_native21.View, {
       style: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -9601,9 +10053,9 @@
             authorText
           ]
         }),
-        badges.length > 0 && /* @__PURE__ */ jsx(import_react_native20.View, {
+        badges.length > 0 && /* @__PURE__ */ jsx(import_react_native21.View, {
           style: styles.badgesContainer,
-          children: badges.map((b3, i) => /* @__PURE__ */ jsx(import_react_native20.Image, {
+          children: badges.map((b3, i) => /* @__PURE__ */ jsx(import_react_native21.Image, {
             source: b3.source,
             style: styles.badgeIcon
           }, i))
@@ -9627,7 +10079,7 @@
   function PluginCard({ result, item: plugin }) {
     plugin.usePluginState();
     var [, forceUpdate] = React.useReducer(() => ({}), 0);
-    var cardContextValue = (0, import_react4.useMemo)(() => ({
+    var cardContextValue = (0, import_react5.useMemo)(() => ({
       plugin,
       result
     }), [
@@ -9641,13 +10093,13 @@
         children: /* @__PURE__ */ jsxs(Stack, {
           spacing: 16,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native20.View, {
+            /* @__PURE__ */ jsxs(import_react_native21.View, {
               style: {
                 flexDirection: "row",
                 justifyContent: "space-between"
               },
               children: [
-                /* @__PURE__ */ jsxs(import_react_native20.View, {
+                /* @__PURE__ */ jsxs(import_react_native21.View, {
                   style: {
                     flexShrink: 1
                   },
@@ -9656,13 +10108,13 @@
                     /* @__PURE__ */ jsx(Authors, {})
                   ]
                 }),
-                /* @__PURE__ */ jsx(import_react_native20.View, {
+                /* @__PURE__ */ jsx(import_react_native21.View, {
                   children: /* @__PURE__ */ jsxs(Stack, {
                     spacing: 12,
                     direction: "horizontal",
                     children: [
                       /* @__PURE__ */ jsx(Actions, {}),
-                      /* @__PURE__ */ jsx(import_react_native20.View, {
+                      /* @__PURE__ */ jsx(import_react_native21.View, {
                         style: core ? {
                           opacity: 0.5
                         } : void 0,
@@ -9688,7 +10140,7 @@
       })
     });
   }
-  var import_chroma_js4, import_react4, import_react_native20, CardContext, useCardContext, Actions;
+  var import_chroma_js4, import_react5, import_react_native21, CardContext, useCardContext, Actions;
   var init_PluginCard = __esm({
     "src/core/ui/settings/pages/Plugins/components/PluginCard.tsx"() {
       "use strict";
@@ -9701,15 +10153,15 @@
       init_components();
       init_sheets();
       import_chroma_js4 = __toESM(require_chroma_js());
-      import_react4 = __toESM(require_react());
-      import_react_native20 = __toESM(require_react_native());
+      import_react5 = __toESM(require_react());
+      import_react_native21 = __toESM(require_react_native());
       init_plugins4();
-      CardContext = /* @__PURE__ */ (0, import_react4.createContext)(null);
-      useCardContext = () => (0, import_react4.useContext)(CardContext);
+      CardContext = /* @__PURE__ */ (0, import_react5.createContext)(null);
+      useCardContext = () => (0, import_react5.useContext)(CardContext);
       Actions = () => {
         var { plugin } = useCardContext();
         var navigation2 = NavigationNative.useNavigation();
-        return /* @__PURE__ */ jsxs(import_react_native20.View, {
+        return /* @__PURE__ */ jsxs(import_react_native21.View, {
           style: {
             flexDirection: "row",
             gap: 6
@@ -9777,23 +10229,23 @@
         _loop2(author);
       authorTextNode.pop();
     }
-    return /* @__PURE__ */ jsxs(import_react_native21.View, {
+    return /* @__PURE__ */ jsxs(import_react_native22.View, {
       style: {
         gap: 4
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native21.View, {
+        /* @__PURE__ */ jsx(import_react_native22.View, {
           children: /* @__PURE__ */ jsx(Text, {
             variant: "heading-xl/semibold",
             children: plugin.name
           })
         }),
-        /* @__PURE__ */ jsx(import_react_native21.View, {
+        /* @__PURE__ */ jsx(import_react_native22.View, {
           style: {
             flexDirection: "row",
             flexShrink: 1
           },
-          children: authors?.length && /* @__PURE__ */ jsxs(import_react_native21.View, {
+          children: authors?.length && /* @__PURE__ */ jsxs(import_react_native22.View, {
             style: {
               flexDirection: "row",
               gap: 8,
@@ -9823,7 +10275,7 @@
       ]
     });
   }
-  var import_react_native21, showUserProfileActionSheet, maybeFetchUser;
+  var import_react_native22, showUserProfileActionSheet, maybeFetchUser;
   var init_TitleComponent = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/TitleComponent.tsx"() {
       "use strict";
@@ -9835,7 +10287,7 @@
       init_common();
       init_components();
       init_stores();
-      import_react_native21 = __toESM(require_react_native());
+      import_react_native22 = __toESM(require_react_native());
       showUserProfileActionSheet = findByNameLazy("showUserProfileActionSheet");
       ({ getUser: maybeFetchUser } = lazyDestructure(() => findByProps("getUser", "fetchProfile")));
     }
@@ -9858,7 +10310,7 @@
   }
   function PluginInfoActionSheet({ plugin, navigation: navigation2 }) {
     plugin.usePluginState();
-    var [loading, setLoading] = (0, import_react5.useState)(false);
+    var [loading, setLoading] = (0, import_react6.useState)(false);
     var isVendettaPlugin = plugin.id.includes("/");
     var isCorePlugin2 = plugin.id.startsWith("bunny.") || plugin.id.startsWith("vendetta.");
     var copyPluginUrl = () => {
@@ -9954,13 +10406,13 @@
       });
     };
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native22.ScrollView, {
+      children: /* @__PURE__ */ jsxs(import_react_native23.ScrollView, {
         contentContainerStyle: {
           gap: 12,
           marginBottom: 12
         },
         children: [
-          /* @__PURE__ */ jsx(import_react_native22.View, {
+          /* @__PURE__ */ jsx(import_react_native23.View, {
             style: {
               flexDirection: "row",
               alignItems: "center",
@@ -9973,7 +10425,7 @@
               plugin
             })
           }),
-          /* @__PURE__ */ jsxs(import_react_native22.View, {
+          /* @__PURE__ */ jsxs(import_react_native23.View, {
             style: {
               flexDirection: "row",
               justifyContent: "center",
@@ -10043,7 +10495,7 @@
       })
     });
   }
-  var import_react5, import_react_native22;
+  var import_react6, import_react_native23;
   var init_PluginInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/PluginInfoActionSheet.tsx"() {
       "use strict";
@@ -10060,8 +10512,8 @@
       init_storage();
       init_storage2();
       init_assets();
-      import_react5 = __toESM(require_react());
-      import_react_native22 = __toESM(require_react_native());
+      import_react6 = __toESM(require_react());
+      import_react_native23 = __toESM(require_react_native());
       init_TitleComponent();
     }
   });
@@ -10208,14 +10660,14 @@
         var unproxiedPlugins = Object.values(VdPluginManager.plugins).filter((p) => !p.id.startsWith(VD_PROXY_PREFIX) && !p.id.startsWith(BUNNY_PROXY_PREFIX));
         if (!unproxiedPlugins.length)
           return null;
-        return /* @__PURE__ */ jsx(import_react_native23.View, {
+        return /* @__PURE__ */ jsx(import_react_native24.View, {
           style: {
             marginVertical: 12,
             marginHorizontal: 10
           },
           children: /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native23.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native24.View, {
               style: {
                 flex: 1,
                 justifyContent: "center",
@@ -10223,7 +10675,7 @@
                 flexDirection: "row"
               },
               children: [
-                /* @__PURE__ */ jsxs(import_react_native23.View, {
+                /* @__PURE__ */ jsxs(import_react_native24.View, {
                   style: {
                     gap: 6,
                     flexShrink: 1
@@ -10240,7 +10692,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsx(import_react_native23.View, {
+                /* @__PURE__ */ jsx(import_react_native24.View, {
                   style: {
                     marginLeft: "auto"
                   },
@@ -10260,7 +10712,7 @@
                             contentContainerStyle: {
                               padding: 8
                             },
-                            ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native23.View, {
+                            ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native24.View, {
                               style: {
                                 height: 8
                               }
@@ -10331,7 +10783,7 @@
       }
     });
   }
-  var import_react_native23, openAlert2, AlertModal3, AlertActions2, AlertActionButton3;
+  var import_react_native24, openAlert2, AlertModal3, AlertActions2, AlertActionButton3;
   var init_Plugins = __esm({
     "src/core/ui/settings/pages/Plugins/index.tsx"() {
       "use strict";
@@ -10354,7 +10806,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react_native23 = __toESM(require_react_native());
+      import_react_native24 = __toESM(require_react_native());
       init_bunny();
       init_vendetta();
       ({ openAlert: openAlert2 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
@@ -10369,13 +10821,13 @@
       children: /* @__PURE__ */ jsxs(Stack, {
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native24.View, {
+          /* @__PURE__ */ jsxs(import_react_native25.View, {
             style: {
               flexDirection: "row",
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsxs(import_react_native24.View, {
+              /* @__PURE__ */ jsxs(import_react_native25.View, {
                 style: styles.headerLeading,
                 children: [
                   /* @__PURE__ */ jsx(Text, {
@@ -10388,7 +10840,7 @@
                   })
                 ]
               }),
-              /* @__PURE__ */ jsxs(import_react_native24.View, {
+              /* @__PURE__ */ jsxs(import_react_native25.View, {
                 style: [
                   styles.headerTrailing,
                   {
@@ -10396,7 +10848,7 @@
                   }
                 ],
                 children: [
-                  /* @__PURE__ */ jsxs(import_react_native24.View, {
+                  /* @__PURE__ */ jsxs(import_react_native25.View, {
                     style: styles.actions,
                     children: [
                       props.overflowActions && /* @__PURE__ */ jsx(IconButton, {
@@ -10433,7 +10885,7 @@
                   props.toggleType && (props.toggleType === "switch" ? /* @__PURE__ */ jsx(FormSwitch, {
                     value: props.toggleValue(),
                     onValueChange: props.onToggleChange
-                  }) : /* @__PURE__ */ jsx(import_react_native24.TouchableOpacity, {
+                  }) : /* @__PURE__ */ jsx(import_react_native25.TouchableOpacity, {
                     onPress: () => {
                       props.onToggleChange?.(!props.toggleValue());
                     },
@@ -10453,7 +10905,7 @@
       })
     });
   }
-  var import_react_native24, hideActionSheet2, showSimpleActionSheet3, useStyles3;
+  var import_react_native25, hideActionSheet2, showSimpleActionSheet3, useStyles3;
   var init_AddonCard = __esm({
     "src/core/ui/components/AddonCard.tsx"() {
       "use strict";
@@ -10466,7 +10918,7 @@
       init_wrappers();
       init_color();
       init_styles();
-      import_react_native24 = __toESM(require_react_native());
+      import_react_native25 = __toESM(require_react_native());
       ({ hideActionSheet: hideActionSheet2 } = lazyDestructure(() => findByProps("openLazy", "hideActionSheet")));
       ({ showSimpleActionSheet: showSimpleActionSheet3 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
       useStyles3 = createStyles({
@@ -10537,23 +10989,23 @@
   }
   function TitleComponent2({ theme }) {
     var { authors } = theme.data;
-    return /* @__PURE__ */ jsxs(import_react_native25.View, {
+    return /* @__PURE__ */ jsxs(import_react_native26.View, {
       style: {
         gap: 4
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native25.View, {
+        /* @__PURE__ */ jsx(import_react_native26.View, {
           children: /* @__PURE__ */ jsx(Text, {
             variant: "heading-xl/semibold",
             children: theme.data.name
           })
         }),
-        /* @__PURE__ */ jsx(import_react_native25.View, {
+        /* @__PURE__ */ jsx(import_react_native26.View, {
           style: {
             flexDirection: "row",
             flexShrink: 1
           },
-          children: authors && authors.length > 0 && /* @__PURE__ */ jsx(import_react_native25.TouchableOpacity, {
+          children: authors && authors.length > 0 && /* @__PURE__ */ jsx(import_react_native26.TouchableOpacity, {
             style: {
               flexDirection: "row",
               gap: 8,
@@ -10577,11 +11029,11 @@
     });
   }
   function ThemeInfoActionSheet({ theme, navigation: navigation2 }) {
-    var [themeState, setThemeState] = (0, import_react6.useState)({
+    var [themeState, setThemeState] = (0, import_react7.useState)({
       ...theme
     });
-    var [loading, setLoading] = (0, import_react6.useState)(false);
-    (0, import_react6.useEffect)(() => {
+    var [loading, setLoading] = (0, import_react7.useState)(false);
+    (0, import_react7.useEffect)(() => {
       var interval = setInterval(() => {
         setThemeState({
           ...theme
@@ -10645,13 +11097,13 @@
       }
     };
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native25.ScrollView, {
+      children: /* @__PURE__ */ jsxs(import_react_native26.ScrollView, {
         contentContainerStyle: {
           gap: 12,
           marginBottom: 12
         },
         children: [
-          /* @__PURE__ */ jsx(import_react_native25.View, {
+          /* @__PURE__ */ jsx(import_react_native26.View, {
             style: {
               flexDirection: "row",
               alignItems: "center",
@@ -10664,7 +11116,7 @@
               theme: themeState
             })
           }),
-          /* @__PURE__ */ jsxs(import_react_native25.View, {
+          /* @__PURE__ */ jsxs(import_react_native26.View, {
             style: {
               flexDirection: "row",
               justifyContent: "center",
@@ -10715,7 +11167,7 @@
       })
     });
   }
-  var import_react6, import_react_native25;
+  var import_react7, import_react_native26;
   var init_ThemeInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Themes/sheets/ThemeInfoActionSheet.tsx"() {
       "use strict";
@@ -10727,8 +11179,8 @@
       init_sheets();
       init_components();
       init_common();
-      import_react6 = __toESM(require_react());
-      import_react_native25 = __toESM(require_react_native());
+      import_react7 = __toESM(require_react());
+      import_react_native26 = __toESM(require_react_native());
       init_toasts();
       init_alerts2();
       init_themes();
@@ -10833,7 +11285,7 @@
             /* @__PURE__ */ jsx(BottomSheetTitleHeader, {
               title: "Options"
             }),
-            /* @__PURE__ */ jsxs(import_react_native26.View, {
+            /* @__PURE__ */ jsxs(import_react_native27.View, {
               style: {
                 paddingVertical: 20,
                 gap: 12
@@ -10919,7 +11371,7 @@
       }
     });
   }
-  var import_react_native26;
+  var import_react_native27;
   var init_Themes = __esm({
     "src/core/ui/settings/pages/Themes/index.tsx"() {
       "use strict";
@@ -10937,147 +11389,7 @@
       init_settings();
       init_storage2();
       init_components();
-      import_react_native26 = __toESM(require_react_native());
-    }
-  });
-
-  // src/lib/addons/fonts/index.ts
-  var fonts_exports = {};
-  __export(fonts_exports, {
-    fonts: () => fonts,
-    installFont: () => installFont,
-    removeFont: () => removeFont,
-    saveFont: () => saveFont,
-    selectFont: () => selectFont,
-    updateFont: () => updateFont,
-    updateFonts: () => updateFonts,
-    validateFont: () => validateFont
-  });
-  function writeFont(font) {
-    return _async_to_generator(function* () {
-      if (!font && font !== null)
-        throw new Error("Arg font must be a valid object or null");
-      if (font) {
-        yield writeFile("fonts.json", JSON.stringify(font));
-      } else {
-        yield removeFile("fonts.json");
-      }
-    })();
-  }
-  function validateFont(font) {
-    if (!font || typeof font !== "object")
-      throw new Error("URL returned a null/non-object JSON");
-    if (typeof font.spec !== "number")
-      throw new Error("Invalid font 'spec' number");
-    if (font.spec !== 1)
-      throw new Error("Only fonts which follows spec:1 are supported");
-    var requiredFields = [
-      "name",
-      "main"
-    ];
-    if (requiredFields.some((f) => !font[f]))
-      throw new Error(`Font is missing one of the fields: ${requiredFields}`);
-    if (font.name.startsWith("__"))
-      throw new Error("Font names cannot start with __");
-    if (font.name in fonts)
-      throw new Error(`There is already a font named '${font.name}' installed`);
-  }
-  function saveFont(data, selected = false) {
-    return _async_to_generator(function* () {
-      var fontDefJson;
-      if (typeof data === "string") {
-        try {
-          fontDefJson = yield (yield safeFetch(data)).json();
-        } catch (e) {
-          throw new Error(`Failed to fetch fonts at ${data}`, {
-            cause: e
-          });
-        }
-      } else {
-        fontDefJson = data;
-      }
-      validateFont(fontDefJson);
-      var errors = yield allSettled(Object.entries(fontDefJson.main).map(([font, url2]) => _async_to_generator(function* () {
-        var ext = url2.split(".").pop();
-        if (ext !== "ttf" && ext !== "otf")
-          ext = "ttf";
-        var path = `downloads/fonts/${fontDefJson.name}/${font}.${ext}`;
-        if (!(yield fileExists(path)))
-          yield downloadFile(url2, path);
-      })())).then((it) => it.map((it2) => it2.status === "fulfilled" ? void 0 : it2.reason));
-      if (errors.some((it) => it))
-        throw errors;
-      fonts[fontDefJson.name] = fontDefJson;
-      if (selected)
-        writeFont(fonts[fontDefJson.name]);
-      return fontDefJson;
-    })();
-  }
-  function updateFont(fontDef) {
-    return _async_to_generator(function* () {
-      var fontDefCopy = {
-        ...fontDef
-      };
-      if (fontDefCopy.source)
-        fontDefCopy = {
-          ...yield fetch(fontDefCopy.source).then((it) => it.json()),
-          // Can't change these properties
-          name: fontDef.name,
-          source: fontDef.source
-        };
-      var selected = fonts.__selected === fontDef.name;
-      yield removeFont(fontDef.name);
-      yield saveFont(fontDefCopy, selected);
-    })();
-  }
-  function installFont(url2, selected = false) {
-    return _async_to_generator(function* () {
-      var font = yield saveFont(url2);
-      if (selected)
-        yield selectFont(font.name);
-    })();
-  }
-  function selectFont(name) {
-    return _async_to_generator(function* () {
-      if (name && !(name in fonts))
-        throw new Error("Selected font does not exist!");
-      if (name) {
-        fonts.__selected = name;
-      } else {
-        delete fonts.__selected;
-      }
-      yield writeFont(name == null ? null : fonts[name]);
-    })();
-  }
-  function removeFont(name) {
-    return _async_to_generator(function* () {
-      var selected = fonts.__selected === name;
-      if (selected)
-        yield selectFont(null);
-      delete fonts[name];
-      try {
-        yield clearFolder(`downloads/fonts/${name}`);
-      } catch (e) {
-      }
-    })();
-  }
-  function updateFonts() {
-    return _async_to_generator(function* () {
-      yield awaitStorage(fonts);
-      allSettled(Object.keys(fonts).map((name) => saveFont(fonts[name], fonts.__selected === name)));
-    })();
-  }
-  var fonts;
-  var init_fonts = __esm({
-    "src/lib/addons/fonts/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_async_to_generator();
-      init_storage();
-      init_fs();
-      init_utils();
-      fonts = wrapSync(createStorage(createMMKVBackend("BUNNY_FONTS")));
+      import_react_native27 = __toESM(require_react_native());
     }
   });
 
@@ -11121,9 +11433,9 @@
   function RevengeFontsExtractor({ fonts: fonts2, setName }) {
     var currentTheme = getCurrentTheme().data;
     var themeFonts = currentTheme.fonts;
-    var [fontName, setFontName] = (0, import_react7.useState)(guessFontName(Object.values(themeFonts)));
-    var [error, setError] = (0, import_react7.useState)(void 0);
-    return /* @__PURE__ */ jsxs(import_react_native27.View, {
+    var [fontName, setFontName] = (0, import_react8.useState)(guessFontName(Object.values(themeFonts)));
+    var [error, setError] = (0, import_react8.useState)(void 0);
+    return /* @__PURE__ */ jsxs(import_react_native28.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -11173,10 +11485,10 @@
     });
   }
   function JsonFontImporter({ fonts: fonts2, setName, setSource }) {
-    var [fontLink, setFontLink] = (0, import_react7.useState)("");
-    var [saving, setSaving] = (0, import_react7.useState)(false);
-    var [error, setError] = (0, import_react7.useState)(void 0);
-    return /* @__PURE__ */ jsxs(import_react_native27.View, {
+    var [fontLink, setFontLink] = (0, import_react8.useState)("");
+    var [saving, setSaving] = (0, import_react8.useState)(false);
+    var [error, setError] = (0, import_react8.useState)(void 0);
+    return /* @__PURE__ */ jsxs(import_react_native28.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -11217,9 +11529,9 @@
     });
   }
   function EntryEditorActionSheet(props) {
-    var [familyName, setFamilyName] = (0, import_react7.useState)(props.name);
-    var [fontUrl, setFontUrl] = (0, import_react7.useState)(props.fontEntries[props.name]);
-    return /* @__PURE__ */ jsxs(import_react_native27.View, {
+    var [familyName, setFamilyName] = (0, import_react8.useState)(props.name);
+    var [fontUrl, setFontUrl] = (0, import_react8.useState)(props.fontEntries[props.name]);
+    return /* @__PURE__ */ jsxs(import_react_native28.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -11273,18 +11585,18 @@
     }), "FontEditorActionSheet");
   }
   function NewEntryRow({ fontName, fontEntry }) {
-    var nameRef = (0, import_react7.useRef)();
-    var urlRef = (0, import_react7.useRef)();
-    var [nameSet, setNameSet] = (0, import_react7.useState)(false);
-    var [error, setError] = (0, import_react7.useState)();
-    return /* @__PURE__ */ jsxs(import_react_native27.View, {
+    var nameRef = (0, import_react8.useRef)();
+    var urlRef = (0, import_react8.useRef)();
+    var [nameSet, setNameSet] = (0, import_react8.useState)(false);
+    var [error, setError] = (0, import_react8.useState)();
+    return /* @__PURE__ */ jsxs(import_react_native28.View, {
       style: {
         flexDirection: "row",
         gap: 8,
         justifyContent: "flex-start"
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native27.View, {
+        /* @__PURE__ */ jsx(import_react_native28.View, {
           style: {
             flex: 1
           },
@@ -11338,11 +11650,11 @@
     });
   }
   function FontEditor(props) {
-    var [name, setName] = (0, import_react7.useState)(props.name);
-    var [source, setSource] = (0, import_react7.useState)(props.name && fonts[props.name].source);
-    var [importing, setIsImporting] = (0, import_react7.useState)(false);
-    var [errors, setErrors] = (0, import_react7.useState)();
-    var memoEntry = (0, import_react7.useMemo)(() => {
+    var [name, setName] = (0, import_react8.useState)(props.name);
+    var [source, setSource] = (0, import_react8.useState)(props.name && fonts[props.name].source);
+    var [importing, setIsImporting] = (0, import_react8.useState)(false);
+    var [errors, setErrors] = (0, import_react8.useState)();
+    var memoEntry = (0, import_react8.useMemo)(() => {
       return createProxy(props.name ? {
         ...fonts[props.name].main
       } : {}).proxy;
@@ -11352,7 +11664,7 @@
     var fontEntries = useProxy(memoEntry);
     var navigation2 = NavigationNative.useNavigation();
     var [, forceUpdate] = React.useReducer(() => ({}), 0);
-    return /* @__PURE__ */ jsx(import_react_native27.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native28.ScrollView, {
       style: {
         flex: 1
       },
@@ -11483,7 +11795,7 @@
             color: "text-feedback-critical",
             children: "Some font entries cannot be imported. Please modify the entries and try again."
           }),
-          /* @__PURE__ */ jsx(import_react_native27.View, {
+          /* @__PURE__ */ jsx(import_react_native28.View, {
             style: {
               flexDirection: "row",
               justifyContent: "flex-end",
@@ -11526,7 +11838,7 @@
       })
     });
   }
-  var import_react7, import_react_native27, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
+  var import_react8, import_react_native28, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
   var init_FontEditor = __esm({
     "src/core/ui/settings/pages/Fonts/FontEditor.tsx"() {
       "use strict";
@@ -11545,8 +11857,8 @@
       init_components();
       init_wrappers();
       init_components2();
-      import_react7 = __toESM(require_react());
-      import_react_native27 = __toESM(require_react_native());
+      import_react8 = __toESM(require_react());
+      import_react_native28 = __toESM(require_react_native());
       actionSheet2 = findByPropsLazy("hideActionSheet");
       ({ openAlert: openAlert3 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
       ({ AlertModal: AlertModal4, AlertActionButton: AlertActionButton4 } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
@@ -11561,19 +11873,19 @@
     return /* @__PURE__ */ jsx(Card, {
       children: /* @__PURE__ */ jsx(Stack, {
         spacing: 16,
-        children: /* @__PURE__ */ jsxs(import_react_native28.View, {
+        children: /* @__PURE__ */ jsxs(import_react_native29.View, {
           style: {
             flexDirection: "row",
             alignItems: "center"
           },
           children: [
-            /* @__PURE__ */ jsx(import_react_native28.View, {
+            /* @__PURE__ */ jsx(import_react_native29.View, {
               children: /* @__PURE__ */ jsx(Text, {
                 variant: "heading-lg/semibold",
                 children: font.name
               })
             }),
-            /* @__PURE__ */ jsx(import_react_native28.View, {
+            /* @__PURE__ */ jsx(import_react_native29.View, {
               style: {
                 marginLeft: "auto"
               },
@@ -11619,7 +11931,7 @@
       })
     });
   }
-  var import_react_native28, useToken2;
+  var import_react_native29, useToken2;
   var init_FontCard = __esm({
     "src/core/ui/settings/pages/Fonts/FontCard.tsx"() {
       "use strict";
@@ -11637,7 +11949,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react_native28 = __toESM(require_react_native());
+      import_react_native29 = __toESM(require_react_native());
       init_FontEditor();
       ({ useToken: useToken2 } = lazyDestructure(() => findByProps("useToken")));
     }
@@ -11884,14 +12196,14 @@
       children: /* @__PURE__ */ jsxs(Stack, {
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native29.View, {
+          /* @__PURE__ */ jsxs(import_react_native30.View, {
             style: {
               flexDirection: "row",
               justifyContent: "space-between",
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsxs(import_react_native29.View, {
+              /* @__PURE__ */ jsxs(import_react_native30.View, {
                 style: {
                   flexShrink: 1
                 },
@@ -11921,7 +12233,7 @@
                   })
                 ]
               }),
-              /* @__PURE__ */ jsx(import_react_native29.View, {
+              /* @__PURE__ */ jsx(import_react_native30.View, {
                 children: /* @__PURE__ */ jsx(TrailingButtons, {
                   addon,
                   isPluginMode,
@@ -12081,7 +12393,7 @@
       sort
     ]);
     if (error) {
-      return /* @__PURE__ */ jsx(import_react_native29.View, {
+      return /* @__PURE__ */ jsx(import_react_native30.View, {
         style: {
           flex: 1,
           paddingHorizontal: 8,
@@ -12118,24 +12430,24 @@
         })
       });
     }
-    return /* @__PURE__ */ jsxs(import_react_native29.View, {
+    return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         flex: 1
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native29.View, {
+        /* @__PURE__ */ jsx(import_react_native30.View, {
           style: {
             paddingHorizontal: 10
           },
           children: /* @__PURE__ */ jsxs(Stack, {
             spacing: 12,
             children: [
-              /* @__PURE__ */ jsx(import_react_native29.View, {
+              /* @__PURE__ */ jsx(import_react_native30.View, {
                 style: {
                   flexDirection: "row",
                   paddingTop: 10
                 },
-                children: /* @__PURE__ */ jsxs(import_react_native29.View, {
+                children: /* @__PURE__ */ jsxs(import_react_native30.View, {
                   style: {
                     flex: 1,
                     flexDirection: "row",
@@ -12151,7 +12463,7 @@
                         flex: 1
                       }
                     }),
-                    /* @__PURE__ */ jsx(import_react_native29.View, {
+                    /* @__PURE__ */ jsx(import_react_native30.View, {
                       style: {
                         width: 8
                       }
@@ -12168,7 +12480,7 @@
                   ]
                 })
               }),
-              /* @__PURE__ */ jsxs(import_react_native29.View, {
+              /* @__PURE__ */ jsxs(import_react_native30.View, {
                 style: {
                   flexDirection: "row",
                   alignItems: "center",
@@ -12184,7 +12496,7 @@
                       flex: 1
                     }
                   }),
-                  /* @__PURE__ */ jsx(import_react_native29.View, {
+                  /* @__PURE__ */ jsx(import_react_native30.View, {
                     style: {
                       flexDirection: "row",
                       alignItems: "center",
@@ -12224,21 +12536,21 @@
             paddingBottom: 90,
             paddingHorizontal: 5
           },
-          ListHeaderComponent: mode === "plugins" ? /* @__PURE__ */ jsx(import_react_native29.View, {
+          ListHeaderComponent: mode === "plugins" ? /* @__PURE__ */ jsx(import_react_native30.View, {
             style: {
               paddingVertical: 6,
               paddingHorizontal: 8
             },
             children: /* @__PURE__ */ jsx(Card, {
               border: "strong",
-              children: /* @__PURE__ */ jsx(import_react_native29.View, {
+              children: /* @__PURE__ */ jsx(import_react_native30.View, {
                 style: {
                   flex: 1,
                   justifyContent: "center",
                   alignItems: "center",
                   flexDirection: "row"
                 },
-                children: /* @__PURE__ */ jsxs(import_react_native29.View, {
+                children: /* @__PURE__ */ jsxs(import_react_native30.View, {
                   style: {
                     gap: 6,
                     flexShrink: 1
@@ -12259,7 +12571,7 @@
             })
           }) : null,
           //@ts-ignore
-          renderItem: ({ item: addon }) => /* @__PURE__ */ jsx(import_react_native29.View, {
+          renderItem: ({ item: addon }) => /* @__PURE__ */ jsx(import_react_native30.View, {
             style: {
               paddingVertical: 6,
               paddingHorizontal: 8
@@ -12276,7 +12588,7 @@
       ]
     });
   }
-  var import_react_native29, showSimpleActionSheet4, hideActionSheet3, PLUGIN_URL, THEME_URL, Sort;
+  var import_react_native30, showSimpleActionSheet4, hideActionSheet3, PLUGIN_URL, THEME_URL, Sort;
   var init_PluginBrowser = __esm({
     "src/core/ui/settings/pages/PluginBrowser/index.tsx"() {
       "use strict";
@@ -12285,7 +12597,7 @@
       init_async_to_generator();
       init_jsxRuntime();
       init_common();
-      import_react_native29 = __toESM(require_react_native());
+      import_react_native30 = __toESM(require_react_native());
       init_components();
       init_assets();
       init_safeFetch();
@@ -12318,11 +12630,11 @@
 
   // src/core/ui/hooks/useFS.ts
   function useFileExists(path, prefix) {
-    var [state, setState] = (0, import_react8.useState)(2);
+    var [state, setState] = (0, import_react9.useState)(2);
     var check = () => fileExists(path, {
       prefix
     }).then((exists) => setState(exists ? 1 : 0)).catch(() => setState(3));
-    var customFS = (0, import_react8.useMemo)(() => new Proxy(fs_exports, {
+    var customFS = (0, import_react9.useMemo)(() => new Proxy(fs_exports, {
       get(target, p, receiver) {
         var val = Reflect.get(target, p, receiver);
         if (typeof val !== "function")
@@ -12337,20 +12649,20 @@
         };
       }
     }), []);
-    (0, import_react8.useEffect)(() => void check(), []);
+    (0, import_react9.useEffect)(() => void check(), []);
     return [
       state,
       customFS
     ];
   }
-  var import_react8, CheckState;
+  var import_react9, CheckState;
   var init_useFS = __esm({
     "src/core/ui/hooks/useFS.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_fs();
-      import_react8 = __toESM(require_react());
+      import_react9 = __toESM(require_react());
       CheckState = /* @__PURE__ */ function(CheckState2) {
         CheckState2[CheckState2["FALSE"] = 0] = "FALSE";
         CheckState2[CheckState2["TRUE"] = 1] = "TRUE";
@@ -12367,7 +12679,7 @@
       variant: displayable.has(asset.type) ? "default" : "danger",
       label: asset.name,
       subLabel: `Index: ${asset.id} Type: ${asset.type}`,
-      icon: displayable.has(asset.type) ? /* @__PURE__ */ jsx(import_react_native30.Image, {
+      icon: displayable.has(asset.type) ? /* @__PURE__ */ jsx(import_react_native31.Image, {
         source: asset.id,
         style: {
           width: 32,
@@ -12382,7 +12694,7 @@
         content: `Index: ${asset.id}
 Module ID: ${asset.moduleId}
 Type: ${asset.type}`,
-        extraContent: displayable.has(asset.type) ? /* @__PURE__ */ jsx(import_react_native30.Image, {
+        extraContent: displayable.has(asset.type) ? /* @__PURE__ */ jsx(import_react_native31.Image, {
           resizeMode: "contain",
           source: asset.id,
           style: {
@@ -12420,7 +12732,7 @@ Type: ${asset.type}`,
       }))
     });
   }
-  var import_react_native30, openAlert4, AlertModal5, AlertActionButton5, displayable, iconMap, copyToClipboard;
+  var import_react_native31, openAlert4, AlertModal5, AlertActionButton5, displayable, iconMap, copyToClipboard;
   var init_AssetDisplay = __esm({
     "src/core/ui/settings/pages/Developer/AssetDisplay.tsx"() {
       "use strict";
@@ -12433,7 +12745,7 @@ Type: ${asset.type}`,
       init_common();
       init_components();
       init_toasts();
-      import_react_native30 = __toESM(require_react_native());
+      import_react_native31 = __toESM(require_react_native());
       ({ openAlert: openAlert4 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
       ({ AlertModal: AlertModal5, AlertActionButton: AlertActionButton5 } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
       displayable = /* @__PURE__ */ new Set([
@@ -12459,8 +12771,8 @@ Type: ${asset.type}`,
   function AssetBrowser() {
     var [search, setSearch] = React.useState("");
     var [showNonImages, setShowNonImages] = React.useState(false);
-    var all = (0, import_react9.useMemo)(() => Array.from(iterateAssets()), []);
-    var filteredData = (0, import_react9.useMemo)(() => {
+    var all = (0, import_react10.useMemo)(() => Array.from(iterateAssets()), []);
+    var filteredData = (0, import_react10.useMemo)(() => {
       var result = all.filter((a) => a.name.includes(search) || a.id.toString() === search);
       if (!showNonImages) {
         result = result.filter((a) => displayable2.has(a.type));
@@ -12472,19 +12784,19 @@ Type: ${asset.type}`,
       showNonImages
     ]);
     return /* @__PURE__ */ jsx(ErrorBoundary, {
-      children: /* @__PURE__ */ jsxs(import_react_native31.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native32.View, {
         style: {
           flex: 1
         },
         children: [
-          /* @__PURE__ */ jsxs(import_react_native31.View, {
+          /* @__PURE__ */ jsxs(import_react_native32.View, {
             style: {
               flexDirection: "row",
               alignItems: "center",
               margin: 10
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native31.View, {
+              /* @__PURE__ */ jsx(import_react_native32.View, {
                 style: {
                   flex: 1,
                   marginRight: 10
@@ -12493,7 +12805,7 @@ Type: ${asset.type}`,
                   onChangeText: (v2) => setSearch(v2)
                 })
               }),
-              /* @__PURE__ */ jsx(import_react_native31.TouchableOpacity, {
+              /* @__PURE__ */ jsx(import_react_native32.TouchableOpacity, {
                 style: {
                   padding: 12,
                   backgroundColor: showNonImages ? "#0f1013" : "#303139",
@@ -12504,7 +12816,7 @@ Type: ${asset.type}`,
                   minHeight: 44
                 },
                 onPress: () => setShowNonImages(!showNonImages),
-                children: /* @__PURE__ */ jsx(import_react_native31.Image, {
+                children: /* @__PURE__ */ jsx(import_react_native32.Image, {
                   style: {
                     width: 20,
                     height: 20
@@ -12514,8 +12826,8 @@ Type: ${asset.type}`,
               })
             ]
           }),
-          /* @__PURE__ */ jsx(import_react_native31.ScrollView, {
-            children: /* @__PURE__ */ jsxs(import_react_native31.View, {
+          /* @__PURE__ */ jsx(import_react_native32.ScrollView, {
+            children: /* @__PURE__ */ jsxs(import_react_native32.View, {
               style: {
                 flex: 1,
                 borderRadius: 16,
@@ -12532,7 +12844,7 @@ Type: ${asset.type}`,
                   },
                   children: "Some assets types cannot be displayed and will be marked in red."
                 }),
-                /* @__PURE__ */ jsx(import_react_native31.FlatList, {
+                /* @__PURE__ */ jsx(import_react_native32.FlatList, {
                   data: filteredData,
                   renderItem: ({ item }) => /* @__PURE__ */ jsx(AssetDisplay, {
                     asset: item,
@@ -12553,7 +12865,7 @@ Type: ${asset.type}`,
       })
     });
   }
-  var import_react9, import_react_native31, displayable2;
+  var import_react10, import_react_native32, displayable2;
   var init_AssetBrowser = __esm({
     "src/core/ui/settings/pages/Developer/AssetBrowser.tsx"() {
       "use strict";
@@ -12564,8 +12876,8 @@ Type: ${asset.type}`,
       init_assets();
       init_components();
       init_components2();
-      import_react9 = __toESM(require_react());
-      import_react_native31 = __toESM(require_react_native());
+      import_react10 = __toESM(require_react());
+      import_react_native32 = __toESM(require_react_native());
       displayable2 = /* @__PURE__ */ new Set([
         "png",
         "jpg",
@@ -12581,12 +12893,12 @@ Type: ${asset.type}`,
   });
   function Developer() {
     var [rdtFileExists, fs] = useFileExists("preloads/reactDevtools.js");
-    var [isDebuggerConnected, setIsDebuggerConnected] = (0, import_react10.useState)(isConnectedToDebugger2());
+    var [isDebuggerConnected, setIsDebuggerConnected] = (0, import_react11.useState)(isConnectedToDebugger2());
     var styles = useStyles4();
     var navigation2 = NavigationNative.useNavigation();
     useProxy(settings);
     useProxy(loaderConfig);
-    (0, import_react10.useEffect)(() => {
+    (0, import_react11.useEffect)(() => {
       var interval = setInterval(() => {
         setIsDebuggerConnected(isConnectedToDebugger2());
       }, 1e3);
@@ -12602,7 +12914,7 @@ Type: ${asset.type}`,
       }
     };
     return /* @__PURE__ */ jsx(ErrorBoundary, {
-      children: /* @__PURE__ */ jsx(import_react_native33.ScrollView, {
+      children: /* @__PURE__ */ jsx(import_react_native34.ScrollView, {
         style: {
           flex: 1
         },
@@ -12707,7 +13019,7 @@ Type: ${asset.type}`,
                         }
                         yield devTools.connectToDevTools({
                           host: settings.devToolsUrl.split(":")?.[0],
-                          resolveRNStyle: import_react_native33.StyleSheet.flatten
+                          resolveRNStyle: import_react_native34.StyleSheet.flatten
                         });
                       } catch (error) {
                         showToast("Invalid devTools URL!", findAssetId("Small"));
@@ -12772,7 +13084,7 @@ Type: ${asset.type}`,
                           /* @__PURE__ */ jsx(AlertActionButton6, {
                             text: Strings.RELOAD,
                             variant: "destructive",
-                            onPress: () => import_react_native32.NativeModules.BundleUpdaterManager.reload()
+                            onPress: () => import_react_native33.NativeModules.BundleUpdaterManager.reload()
                           }),
                           /* @__PURE__ */ jsx(AlertActionButton6, {
                             text: Strings.CANCEL,
@@ -12875,7 +13187,7 @@ Type: ${asset.type}`,
       })
     });
   }
-  var import_react_native32, import_react_native33, import_react10, hideActionSheet4, showSimpleActionSheet5, openAlert5, AlertModal6, AlertActionButton6, RDT_EMBED_LINK, useStyles4;
+  var import_react_native33, import_react_native34, import_react11, hideActionSheet4, showSimpleActionSheet5, openAlert5, AlertModal6, AlertActionButton6, RDT_EMBED_LINK, useStyles4;
   var init_Developer = __esm({
     "src/core/ui/settings/pages/Developer/index.tsx"() {
       "use strict";
@@ -12898,10 +13210,10 @@ Type: ${asset.type}`,
       init_color();
       init_components2();
       init_styles();
-      import_react_native32 = __toESM(require_react_native());
       import_react_native33 = __toESM(require_react_native());
+      import_react_native34 = __toESM(require_react_native());
       init_toasts();
-      import_react10 = __toESM(require_react());
+      import_react11 = __toESM(require_react());
       ({ hideActionSheet: hideActionSheet4 } = lazyDestructure(() => findByProps("openLazy", "hideActionSheet")));
       ({ showSimpleActionSheet: showSimpleActionSheet5 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
       ({ openAlert: openAlert5 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
@@ -12937,7 +13249,7 @@ Type: ${asset.type}`,
           icon: {
             uri: "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
           },
-          onPress: () => import_react_native34.Linking.openURL("https://revenge.nexpid.xyz/cloud-sync")
+          render: () => Promise.resolve().then(() => (init_CloudSync(), CloudSync_exports))
         },
         {
           key: "BUNNY_PLUGINS",
@@ -12987,7 +13299,6 @@ Type: ${asset.type}`,
       items: []
     });
   }
-  var import_react_native34;
   var init_settings3 = __esm({
     "src/core/ui/settings/index.ts"() {
       "use strict";
@@ -13000,7 +13311,6 @@ Type: ${asset.type}`,
       init_loader();
       init_settings();
       init_settings2();
-      import_react_native34 = __toESM(require_react_native());
     }
   });
 
@@ -13023,7 +13333,7 @@ Type: ${asset.type}`,
   });
 
   // src/core/vendetta/api.tsx
-  var import_react11, import_react_native35, initVendettaObject;
+  var import_react12, import_react_native35, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -13052,7 +13362,7 @@ Type: ${asset.type}`,
       init_styles();
       init_toasts();
       init_dist();
-      import_react11 = __toESM(require_react());
+      import_react12 = __toESM(require_react());
       import_react_native35 = __toESM(require_react_native());
       init_plugins();
       initVendettaObject = () => {
@@ -13083,8 +13393,8 @@ Type: ${asset.type}`,
                     ...module,
                     ActionSheetTitleHeader: module.BottomSheetTitleHeader,
                     ActionSheetContentContainer: ({ children }) => {
-                      (0, import_react11.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
-                      return /* @__PURE__ */ (0, import_react11.createElement)(import_react_native35.View, null, children);
+                      (0, import_react12.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
+                      return /* @__PURE__ */ (0, import_react12.createElement)(import_react_native35.View, null, children);
                     }
                   };
                 }
