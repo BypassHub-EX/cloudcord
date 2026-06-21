@@ -12926,7 +12926,7 @@ Type: ${asset.type}`,
           key: "KETTU",
           title: () => Strings.PUPU,
           icon: {
-            uri: kettu_default
+            uri: "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
           },
           render: () => Promise.resolve().then(() => (init_General(), General_exports)),
           useTrailing: () => `(${"v0.1"})`
