@@ -26,7 +26,7 @@ jobs:
           rm -rf _kettu_build
           git clone --depth=1 https://codeberg.org/cocobo1/Kettu.git _kettu_build
 
-      - name: Apply CloudCord branding and Cloud Sync tab
+      - name: Apply CloudCord branding, Cloud Sync, and global plugin scaling
         run: |
           set -e
           cd _kettu_build
@@ -40,10 +40,42 @@ jobs:
           fi
 
           mkdir -p src/core/ui/settings/pages/CloudSync
+          mkdir -p src/core/ui/settings/components
+
+          cat > src/core/ui/settings/components/ScaledPluginSettings.tsx <<'TSX'
+          import type { ComponentType } from "react";
+          import { ScrollView, View } from "react-native";
+
+          export default function ScaledPluginSettings({ component: Component }: { component: ComponentType<any> }) {
+              const scale = 0.8;
+
+              return (
+                  <ScrollView
+                      style={{ flex: 1 }}
+                      contentContainerStyle={{
+                          paddingBottom: 80,
+                          paddingHorizontal: 8,
+                          alignItems: "center"
+                      }}
+                  >
+                      <View
+                          style={{
+                              width: `${100 / scale}%`,
+                              transform: [{ scale }],
+                              alignSelf: "center"
+                          }}
+                      >
+                          <Component />
+                      </View>
+                  </ScrollView>
+              );
+          }
+          TSX
 
           cat > src/core/ui/settings/pages/CloudSync/index.tsx <<'TSX'
           import { VdPluginManager } from "@core/vendetta/plugins";
           import { useProxy } from "@core/vendetta/storage";
+          import ScaledPluginSettings from "@core/ui/settings/components/ScaledPluginSettings";
           import { findAssetId } from "@lib/api/assets";
           import { showToast } from "@lib/ui/toasts";
           import { Card, Stack, TableRow, TableRowGroup, Text } from "@metro/common/components";
@@ -51,7 +83,7 @@ jobs:
           import { ScrollView, View } from "react-native";
 
           const PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
-          const CLOUDSYNC_ICON = "https://github.com/nexpid/CloudSync/raw/main/assets/icon-bright.svg";
+          const CLOUDSYNC_ICON = "https://images.weserv.nl/?url=raw.githubusercontent.com/nexpid/CloudSync/main/assets/icon-bright.svg&w=128&h=128&output=png";
 
           export default function CloudSync() {
               useProxy(VdPluginManager.plugins);
@@ -131,28 +163,7 @@ jobs:
               }
 
               if (SettingsComponent) {
-                  const scale = 0.85;
-
-                  return (
-                      <ScrollView
-                          style={{ flex: 1 }}
-                          contentContainerStyle={{
-                              paddingBottom: 80,
-                              paddingHorizontal: 8,
-                              alignItems: "center"
-                          }}
-                      >
-                          <View
-                              style={{
-                                  width: `${100 / scale}%`,
-                                  transform: [{ scale }],
-                                  alignSelf: "center"
-                              }}
-                          >
-                              <SettingsComponent key={`cloud-sync-settings-${refresh}`} />
-                          </View>
-                      </ScrollView>
-                  );
+                  return <ScaledPluginSettings key={`cloud-sync-settings-${refresh}`} component={SettingsComponent} />;
               }
 
               return (
@@ -217,7 +228,7 @@ jobs:
           DISCORD_URL = "https://discord.gg/5naTPJYemX"
           GITHUB_URL = "https://github.com/xohus/cloudcord"
           CLOUDCORD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
-          CLOUDSYNC_ICON = "https://github.com/nexpid/CloudSync/raw/main/assets/icon-bright.svg"
+          CLOUDSYNC_ICON = "https://images.weserv.nl/?url=raw.githubusercontent.com/nexpid/CloudSync/main/assets/icon-bright.svg&w=128&h=128&output=png"
 
           replacements = {
               "KettuTweak": "CloudCord",
@@ -360,6 +371,45 @@ jobs:
                   )
 
               settings_index.write_text(text, encoding="utf-8")
+
+          plugin_info = Path("src/core/ui/settings/pages/Plugins/sheets/PluginInfoActionSheet.tsx")
+          if plugin_info.exists():
+              text = plugin_info.read_text(encoding="utf-8", errors="ignore")
+
+              if 'ScaledPluginSettings' not in text:
+                  text = text.replace(
+                      'import TitleComponent from "./TitleComponent";',
+                      'import TitleComponent from "./TitleComponent";\nimport ScaledPluginSettings from "@core/ui/settings/components/ScaledPluginSettings";'
+                  )
+
+              text = text.replace(
+                  'render: plugin.getPluginSettingsComponent(),',
+                  'render: () => <ScaledPluginSettings component={plugin.getPluginSettingsComponent()!} />,'
+              )
+
+              plugin_info.write_text(text, encoding="utf-8")
+
+          vd_plugin_info = Path("src/core/ui/settings/pages/Plugins/sheets/VdPluginInfoActionSheet.tsx")
+          if vd_plugin_info.exists():
+              text = vd_plugin_info.read_text(encoding="utf-8", errors="ignore")
+
+              if 'ScaledPluginSettings' not in text:
+                  text = text.replace(
+                      'import { PluginInfoActionSheetProps } from "./common";',
+                      'import { PluginInfoActionSheetProps } from "./common";\nimport ScaledPluginSettings from "@core/ui/settings/components/ScaledPluginSettings";'
+                  )
+
+              text = text.replace(
+                  'render: SettingsComponent,',
+                  'render: () => <ScaledPluginSettings component={SettingsComponent} />,'
+              )
+
+              text = text.replace(
+                  'render: SettingsComponent',
+                  'render: () => <ScaledPluginSettings component={SettingsComponent} />'
+              )
+
+              vd_plugin_info.write_text(text, encoding="utf-8")
 
           build = Path("scripts/build.mjs")
           if build.exists():
