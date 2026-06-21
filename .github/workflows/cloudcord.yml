@@ -33,6 +33,10 @@ jobs:
 
           if [ -f "../cloudcord-favicon.png" ]; then
             cp "../cloudcord-favicon.png" "src/assets/icons/kettu.png"
+          elif [ -f "../assets/cloudcord-favicon.png" ]; then
+            cp "../assets/cloudcord-favicon.png" "src/assets/icons/kettu.png"
+          elif [ -f "../assets/cloudcord-logo.png" ]; then
+            cp "../assets/cloudcord-logo.png" "src/assets/icons/kettu.png"
           fi
 
           python3 - <<'PY'
@@ -185,7 +189,7 @@ jobs:
               )
 
               text = re.sub(
-                  r'\n\s*\{\s*key:\s*"CLOUD_SYNC"[\s\S]*?Linking\.openURL\([^)]*\)\s*\}\s*,',
+                  r'\n\s*\{\s*key:\s*"CLOUD_SYNC"[\s\S]*?onPress:\s*\(\) => Linking\.openURL\([^)]*\)\s*\n\s*\},',
                   '',
                   text
               )
@@ -197,12 +201,12 @@ jobs:
                   onPress: () => Linking.openURL("{CLOUD_SYNC_URL}")
               }},'''
 
-              kettu_row_pattern = r'(\n\s*\{\s*key:\s*"KETTU"[\s\S]*?useTrailing:\s*\(\) => `$begin:math:text$\\\$\\\{version\\\}$end:math:text$`\s*\},)'
+              plugin_row_pattern = r'(\n\s*\{\s*key:\s*"BUNNY_PLUGINS",)'
 
               if 'key: "CLOUD_SYNC"' not in text:
                   text = re.sub(
-                      kettu_row_pattern,
-                      lambda m: m.group(1) + "\n" + cloud_sync_item,
+                      plugin_row_pattern,
+                      lambda match: "\n" + cloud_sync_item + match.group(1),
                       text,
                       count=1
                   )
