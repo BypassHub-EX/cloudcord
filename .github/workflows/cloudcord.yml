@@ -20,13 +20,13 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Clone Kettu source
+      - name: Use local runtime source
         run: |
           set -e
           rm -rf _kettu_build
-          git clone --depth=1 https://codeberg.org/cocobo1/Kettu.git _kettu_build
+          cp -R runtime _kettu_build
 
-      - name: Apply CloudCord branding, Cloud Sync, and global plugin settings wrapper
+      - name: Apply CloudCord branding, Cloud Sync, and compatibility patches
         run: |
           set -e
           cd _kettu_build
@@ -381,6 +381,64 @@ jobs:
 
               settings_index.write_text(text, encoding="utf-8")
 
+          vendetta_api = Path("src/core/vendetta/api.tsx")
+          if vendetta_api.exists():
+              text = vendetta_api.read_text(encoding="utf-8", errors="ignore")
+
+              marker = 'import { VdPluginManager, VendettaPlugin } from "./plugins";\n'
+
+              patched_forms_code = r'''
+          const PatchedFormRow = ({ label, subLabel, leading, trailing, onPress, disabled, arrow, ...props }: any) => (
+              <commonComponents.TableRow
+                  label={label}
+                  subLabel={subLabel}
+                  icon={leading}
+                  trailing={trailing}
+                  onPress={onPress}
+                  disabled={disabled}
+                  arrow={arrow}
+              />
+          );
+
+          (PatchedFormRow as any).Icon = (Forms as any).FormRow?.Icon ?? commonComponents.TableRow.Icon;
+          (PatchedFormRow as any).Arrow = (Forms as any).FormRow?.Arrow ?? commonComponents.TableRow.Arrow;
+
+          const PatchedFormSwitchRow = ({ label, subLabel, leading, value, onValueChange, disabled, ...props }: any) => (
+              <commonComponents.TableSwitchRow
+                  label={label}
+                  subLabel={subLabel}
+                  icon={leading}
+                  value={!!value}
+                  onValueChange={onValueChange}
+                  disabled={disabled}
+              />
+          );
+
+          const PatchedFormSection = ({ title, children, ...props }: any) => (
+              <commonComponents.TableRowGroup title={title} {...props}>
+                  {children}
+              </commonComponents.TableRowGroup>
+          );
+
+          const PatchedForms = {
+              ...Forms,
+              FormRow: PatchedFormRow,
+              FormSwitchRow: PatchedFormSwitchRow,
+              FormSection: PatchedFormSection,
+              FormDivider: () => null
+          };
+          '''
+
+              if "const PatchedForms =" not in text:
+                  text = text.replace(marker, marker + patched_forms_code + "\n")
+
+              text = text.replace(
+                  "                Forms,\n                General: common.ReactNative,",
+                  "                Forms: PatchedForms,\n                General: common.ReactNative,"
+              )
+
+              vendetta_api.write_text(text, encoding="utf-8")
+
           plugin_info = Path("src/core/ui/settings/pages/Plugins/sheets/PluginInfoActionSheet.tsx")
           if plugin_info.exists():
               text = plugin_info.read_text(encoding="utf-8", errors="ignore")
@@ -451,7 +509,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add cc.js cloudcord.js cloudcord.min.js
-          git commit -m "Build CloudCord v0.1 runtime with Cloud Sync" || exit 0
+          git commit -m "Build CloudCord v0.1 runtime from local source" || exit 0
           git push
 
       - name: Upload runtime artifact
@@ -461,4 +519,4 @@ jobs:
           path: |
             cc.js
             cloudcord.js
-            cloudcord.min.js
+            cloudcord.min.jsf
