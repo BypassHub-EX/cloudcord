@@ -131,7 +131,7 @@ jobs:
               }
 
               if (SettingsComponent) {
-                  const scale = 0.9;
+                  const scale = 0.85;
 
                   return (
                       <ScrollView
