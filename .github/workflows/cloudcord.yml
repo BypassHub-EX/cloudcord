@@ -24,9 +24,16 @@ jobs:
         run: |
           set -e
           rm -rf _kettu_build
-          cp -R runtime _kettu_build
 
-      - name: Apply CloudCord branding, Cloud Sync, and compatibility patches
+          if [ ! -f "runtime/package.json" ]; then
+            echo "runtime/package.json not found. Your runtime folder is missing package.json."
+            exit 1
+          fi
+
+          mkdir -p _kettu_build
+          cp -R runtime/. _kettu_build/
+
+      - name: Apply CloudCord patches
         run: |
           set -e
           cd _kettu_build
@@ -44,38 +51,27 @@ jobs:
 
           cat > src/core/ui/settings/components/ScaledPluginSettings.tsx <<'TSX'
           import type { ComponentType } from "react";
-          import { Dimensions, ScrollView, View } from "react-native";
+          import { ScrollView, View } from "react-native";
 
           export default function ScaledPluginSettings({ component: Component }: { component: ComponentType<any> }) {
-              const width = Math.max(Dimensions.get("window").width, 980);
-
               return (
                   <ScrollView
-                      horizontal
                       style={{ flex: 1 }}
                       contentContainerStyle={{
-                          minWidth: width + 96,
-                          paddingRight: 96
+                          paddingBottom: 90,
+                          paddingHorizontal: 12
                       }}
-                      showsHorizontalScrollIndicator={true}
+                      showsVerticalScrollIndicator={true}
                   >
-                      <ScrollView
-                          style={{ width: width + 96 }}
-                          contentContainerStyle={{
-                              paddingBottom: 90,
-                              paddingRight: 96
+                      <View
+                          style={{
+                              width: "100%",
+                              paddingRight: 24,
+                              overflow: "visible"
                           }}
-                          showsVerticalScrollIndicator={true}
                       >
-                          <View
-                              style={{
-                                  width,
-                                  paddingRight: 96
-                              }}
-                          >
-                              <Component />
-                          </View>
-                      </ScrollView>
+                          <Component />
+                      </View>
                   </ScrollView>
               );
           }
@@ -385,9 +381,15 @@ jobs:
           if vendetta_api.exists():
               text = vendetta_api.read_text(encoding="utf-8", errors="ignore")
 
+              text = re.sub(
+                  r'\n\s*const PatchedFormRow = [\s\S]*?\n\s*const PatchedForms = \{[\s\S]*?\n\s*\};\n',
+                  '\n',
+                  text
+              )
+
               marker = 'import { VdPluginManager, VendettaPlugin } from "./plugins";\n'
 
-              patched_forms_code = r'''
+              patched_forms_code = '''
           const PatchedFormRow = ({ label, subLabel, leading, trailing, onPress, disabled, arrow, ...props }: any) => (
               <commonComponents.TableRow
                   label={label}
@@ -429,11 +431,15 @@ jobs:
           };
           '''
 
-              if "const PatchedForms =" not in text:
-                  text = text.replace(marker, marker + patched_forms_code + "\n")
+              text = text.replace(marker, marker + patched_forms_code + "\n")
 
               text = text.replace(
                   "                Forms,\n                General: common.ReactNative,",
+                  "                Forms: PatchedForms,\n                General: common.ReactNative,"
+              )
+
+              text = text.replace(
+                  "                Forms: PatchedForms,\n                General: common.ReactNative,",
                   "                Forms: PatchedForms,\n                General: common.ReactNative,"
               )
 
@@ -499,9 +505,21 @@ jobs:
           cd _kettu_build
           bun run build -- --build-minify
 
-          cp dist/kettu.js ../cloudcord.js
-          cp dist/kettu.min.js ../cc.js
-          cp dist/kettu.min.js ../cloudcord.min.js
+          if [ -f "dist/kettu.js" ]; then
+            cp dist/kettu.js ../cloudcord.js
+          fi
+
+          if [ -f "dist/kettu.min.js" ]; then
+            cp dist/kettu.min.js ../cc.js
+            cp dist/kettu.min.js ../cloudcord.min.js
+          elif [ -f "dist/kettu.js" ]; then
+            cp dist/kettu.js ../cc.js
+            cp dist/kettu.js ../cloudcord.min.js
+          else
+            echo "Build finished but no dist/kettu.js or dist/kettu.min.js was found."
+            ls -R dist || true
+            exit 1
+          fi
 
       - name: Commit runtime files
         run: |
@@ -519,4 +537,4 @@ jobs:
           path: |
             cc.js
             cloudcord.js
-            cloudcord.min.jsf
+            cloudcord.min.js
