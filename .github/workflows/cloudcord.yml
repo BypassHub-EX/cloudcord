@@ -42,6 +42,7 @@ jobs:
           CLOUD_SYNC_URL = "https://revenge.nexpid.xyz/cloud-sync"
           DISCORD_URL = "https://discord.gg/5naTPJYemX"
           GITHUB_URL = "https://github.com/xohus/cloudcord"
+          ICON_URL = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
 
           replacements = {
               "KettuTweak": "CloudCord",
@@ -178,29 +179,33 @@ jobs:
                       'import { version } from "bunny-build-info";\nimport { Linking } from "react-native";'
                   )
 
+              text = text.replace(
+                  'icon: { uri: PupuIcon },',
+                  f'icon: {{ uri: "{ICON_URL}" }},'
+              )
+
               text = re.sub(
                   r'\n\s*\{\s*key:\s*"CLOUD_SYNC"[\s\S]*?Linking\.openURL\([^)]*\)\s*\}\s*,',
                   '',
                   text
               )
 
-              marker = '''            {
-                  key: "KETTU",
-                  title: () => Strings.PUPU,
-                  icon: { uri: PupuIcon },
-                  render: () => import("@core/ui/settings/pages/General"),
-                  useTrailing: () => `(${version})`
-              },'''
-
               cloud_sync_item = f'''            {{
                   key: "CLOUD_SYNC",
                   title: () => "Cloud Sync",
-                  icon: findAssetId("img_account_sync_github_white"),
+                  icon: {{ uri: "{ICON_URL}" }},
                   onPress: () => Linking.openURL("{CLOUD_SYNC_URL}")
               }},'''
 
-              if marker in text and 'key: "CLOUD_SYNC"' not in text:
-                  text = text.replace(marker, marker + "\n" + cloud_sync_item)
+              kettu_row_pattern = r'(\n\s*\{\s*key:\s*"KETTU"[\s\S]*?useTrailing:\s*\(\) => `$begin:math:text$\\\$\\\{version\\\}$end:math:text$`\s*\},)'
+
+              if 'key: "CLOUD_SYNC"' not in text:
+                  text = re.sub(
+                      kettu_row_pattern,
+                      lambda m: m.group(1) + "\n" + cloud_sync_item,
+                      text,
+                      count=1
+                  )
 
               settings_index.write_text(text, encoding="utf-8")
 
