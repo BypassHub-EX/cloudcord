@@ -24,7 +24,7 @@ import { createElement, useEffect } from "react";
 import { View } from "react-native";
 
 import { VdPluginManager, VendettaPlugin } from "./plugins";
-
+import { VdPluginManager, VendettaPlugin } from "./plugins";
 export async function createVdPluginObject(plugin: VendettaPlugin) {
     return {
         ...window.vendetta,
@@ -148,7 +148,7 @@ export const initVendettaObject = (): any => {
         },
         ui: {
             components: {
-                Forms,
+                Forms: PatchedForms,
                 General: common.ReactNative,
                 Alert: commonComponents.LegacyAlert,
                 Button: commonComponents.CompatButton,
