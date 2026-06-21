@@ -6890,7 +6890,7 @@
 
   // src/core/ui/settings/components/ScaledPluginSettings.tsx
   function ScaledPluginSettings({ component: Component }) {
-    var scale = 0.4;
+    var scale = 0.1;
     return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
       style: {
         flex: 1
