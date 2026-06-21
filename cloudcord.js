@@ -6964,7 +6964,7 @@
       })();
     }
     if (SettingsComponent) {
-      var scale = 0.9;
+      var scale = 0.85;
       return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
         style: {
           flex: 1
