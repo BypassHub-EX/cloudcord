@@ -1,0 +1,68 @@
+name: CloudCord Desktop
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "desktop/**"
+      - ".github/workflows/desktop.yml"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install runtime dependencies
+        working-directory: desktop/runtime
+        run: pnpm install
+
+      - name: Typecheck runtime
+        working-directory: desktop/runtime
+        run: pnpm typecheck
+
+      - name: Build runtime
+        working-directory: desktop/runtime
+        run: pnpm build
+
+      - name: Package runtime
+        working-directory: desktop/runtime
+        run: pnpm package
+
+      - name: Install installer dependencies
+        working-directory: desktop/installer
+        run: pnpm install
+
+      - name: Typecheck installer
+        working-directory: desktop/installer
+        run: pnpm typecheck
+
+      - name: Build installer
+        working-directory: desktop/installer
+        run: pnpm build
+
+      - name: Package installer
+        working-directory: desktop/installer
+        run: pnpm package
+
+      - name: Upload desktop artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudCordDesktop-Windows
+          path: |
+            desktop/installer/dist/CloudCordSetup.exe
+            desktop/runtime/dist/cloudcord-desktop.js
+            desktop/runtime/dist/cloudcord-desktop.min.js
+            desktop/runtime/dist/cloudcord-desktop.css

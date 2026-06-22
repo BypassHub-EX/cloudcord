@@ -1,0 +1,56 @@
+{
+  "name": "@cloudcord/desktop-installer",
+  "version": "0.1.0",
+  "description": "CloudCord Setup for the installed Discord desktop app on Windows.",
+  "author": "Xohus",
+  "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xohus/cloudcord"
+  },
+  "main": "build/main.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "pnpm build && electron build/main.js",
+    "package": "electron-builder --win portable --x64",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "electron-log": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "electron": "^32.0.0",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.5.4"
+  },
+  "build": {
+    "appId": "dev.cloudcord.setup",
+    "productName": "CloudCord Setup",
+    "artifactName": "CloudCordSetup.exe",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "build/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../runtime/dist",
+        "to": "runtime",
+        "filter": [
+          "cloudcord-desktop.js",
+          "cloudcord-desktop.min.js",
+          "cloudcord-desktop.css"
+        ]
+      }
+    ],
+    "win": {
+      "target": "portable",
+      "requestedExecutionLevel": "asInvoker",
+      "signAndEditExecutable": false
+    }
+  }
+}
