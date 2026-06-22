@@ -20,13 +20,11 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Clone Kettu source
+      - name: Clone clean Kettu source
         run: |
           set -e
-          SOURCE_DIR="_cloudcord_source"
-          SOURCE_REPO="https://codeberg.org/cocobo1/Ke""ttu.git"
-          rm -rf "$SOURCE_DIR"
-          git clone --depth=1 "$SOURCE_REPO" "$SOURCE_DIR"
+          rm -rf _cloudcord_source
+          git clone --depth=1 https://codeberg.org/cocobo1/Kettu.git _cloudcord_source
 
       - name: Apply CloudCord patches
         run: |
@@ -35,21 +33,216 @@ jobs:
 
           if [ -f "../cloudcord-favicon.png" ]; then
             cp "../cloudcord-favicon.png" "src/assets/icons/kettu.png"
+          elif [ -f "../assets/cloudcord-favicon.png" ]; then
+            cp "../assets/cloudcord-favicon.png" "src/assets/icons/kettu.png"
+          elif [ -f "../assets/cloudcord-logo.png" ]; then
+            cp "../assets/cloudcord-logo.png" "src/assets/icons/kettu.png"
           fi
+
+          mkdir -p src/core/ui/settings/pages/CloudSync
+          mkdir -p src/core/ui/settings/components
+
+          cat > src/core/ui/settings/components/ScaledPluginSettings.tsx <<'TSX'
+          import type { ComponentType } from "react";
+          import { ScrollView, View } from "react-native";
+
+          export default function ScaledPluginSettings({ component: Component }: { component: ComponentType<any> }) {
+              return (
+                  <ScrollView
+                      style={{ flex: 1 }}
+                      contentContainerStyle={{
+                          paddingBottom: 90,
+                          paddingHorizontal: 12
+                      }}
+                      showsVerticalScrollIndicator={true}
+                  >
+                      <View
+                          style={{
+                              width: "100%",
+                              paddingRight: 24,
+                              overflow: "visible"
+                          }}
+                      >
+                          <Component />
+                      </View>
+                  </ScrollView>
+              );
+          }
+          TSX
+
+          cat > src/core/ui/settings/pages/CloudSync/index.tsx <<'TSX'
+          import { VdPluginManager } from "@core/vendetta/plugins";
+          import { useProxy } from "@core/vendetta/storage";
+          import ScaledPluginSettings from "@core/ui/settings/components/ScaledPluginSettings";
+          import { findAssetId } from "@lib/api/assets";
+          import { showToast } from "@lib/ui/toasts";
+          import { Card, Stack, TableRow, TableRowGroup, Text } from "@metro/common/components";
+          import { useState } from "react";
+          import { ScrollView, View } from "react-native";
+
+          const PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
+          const CLOUDSYNC_ICON = "https://images.weserv.nl/?url=raw.githubusercontent.com/nexpid/CloudSync/main/assets/icon-bright.svg&w=128&h=128&output=png";
+
+          export default function CloudSync() {
+              useProxy(VdPluginManager.plugins);
+
+              const [busy, setBusy] = useState(false);
+              const [refresh, setRefresh] = useState(0);
+
+              const plugin = VdPluginManager.plugins[PLUGIN_URL];
+              const SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
+
+              async function installOrStart() {
+                  if (busy) return;
+
+                  setBusy(true);
+
+                  try {
+                      if (!VdPluginManager.plugins[PLUGIN_URL]) {
+                          await VdPluginManager.installPlugin(PLUGIN_URL, true);
+                          showToast("Cloud Sync installed", findAssetId("Check"));
+                      } else if (!VdPluginManager.plugins[PLUGIN_URL].enabled) {
+                          await VdPluginManager.startPlugin(PLUGIN_URL);
+                          showToast("Cloud Sync started", findAssetId("Check"));
+                      } else {
+                          showToast("Cloud Sync is already enabled", findAssetId("Check"));
+                      }
+
+                      setRefresh(x => x + 1);
+                  } catch (error: any) {
+                      console.error("[CloudCord] Cloud Sync install/start failed", error);
+                      showToast(error?.message ?? "Cloud Sync failed");
+                  } finally {
+                      setBusy(false);
+                  }
+              }
+
+              async function refetchPlugin() {
+                  if (busy) return;
+
+                  setBusy(true);
+
+                  try {
+                      if (VdPluginManager.plugins[PLUGIN_URL]?.enabled) {
+                          VdPluginManager.stopPlugin(PLUGIN_URL, false);
+                      }
+
+                      await VdPluginManager.fetchPlugin(PLUGIN_URL);
+                      await VdPluginManager.startPlugin(PLUGIN_URL);
+
+                      showToast("Cloud Sync refreshed", findAssetId("Check"));
+                      setRefresh(x => x + 1);
+                  } catch (error: any) {
+                      console.error("[CloudCord] Cloud Sync refresh failed", error);
+                      showToast(error?.message ?? "Cloud Sync refresh failed");
+                  } finally {
+                      setBusy(false);
+                  }
+              }
+
+              async function removePlugin() {
+                  if (busy) return;
+
+                  setBusy(true);
+
+                  try {
+                      if (VdPluginManager.plugins[PLUGIN_URL]) {
+                          await VdPluginManager.removePlugin(PLUGIN_URL);
+                      }
+
+                      showToast("Cloud Sync removed");
+                      setRefresh(x => x + 1);
+                  } catch (error: any) {
+                      console.error("[CloudCord] Cloud Sync remove failed", error);
+                      showToast(error?.message ?? "Cloud Sync remove failed");
+                  } finally {
+                      setBusy(false);
+                  }
+              }
+
+              if (SettingsComponent) {
+                  return <ScaledPluginSettings key={`cloud-sync-settings-${refresh}`} component={SettingsComponent} />;
+              }
+
+              return (
+                  <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 38 }}>
+                      <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
+                          <TableRowGroup title="Cloud Sync">
+                              <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+                                  <Text variant="heading-md/semibold" color="text-normal">
+                                      Cloud Sync
+                                  </Text>
+                                  <Text variant="text-sm/medium" color="text-muted">
+                                      Install the official Cloud Sync plugin to connect, sync, add backup files, and save backups to your device.
+                                  </Text>
+                              </View>
+
+                              <TableRow
+                                  arrow
+                                  label={plugin ? "Start Cloud Sync" : "Install Cloud Sync"}
+                                  subLabel={busy ? "Please wait..." : "Loads the official Cloud Sync plugin UI"}
+                                  icon={<TableRow.Icon source={{ uri: CLOUDSYNC_ICON }} />}
+                                  onPress={installOrStart}
+                              />
+
+                              {plugin && (
+                                  <TableRow
+                                      arrow
+                                      label="Refresh Cloud Sync"
+                                      subLabel="Refetches the official plugin"
+                                      icon={<TableRow.Icon source={findAssetId("RetryIcon")!} />}
+                                      onPress={refetchPlugin}
+                                  />
+                              )}
+
+                              {plugin && (
+                                  <TableRow
+                                      arrow
+                                      label="Remove Cloud Sync"
+                                      subLabel="Uninstalls the Cloud Sync plugin"
+                                      icon={<TableRow.Icon source={findAssetId("TrashIcon") ?? findAssetId("CircleXIcon-primary")!} />}
+                                      onPress={removePlugin}
+                                  />
+                              )}
+                          </TableRowGroup>
+
+                          <Card border="strong">
+                              <View style={{ padding: 12 }}>
+                                  <Text variant="text-sm/medium" color="text-muted">
+                                      This tab uses the official Cloud Sync plugin. The plugin itself handles OAuth, sync, backups, and files.
+                                  </Text>
+                              </View>
+                          </Card>
+                      </Stack>
+                  </ScrollView>
+              );
+          }
+          TSX
+
+          cat > src/lib/addons/themes/colors/patches/background.tsx <<'TSX'
+          export default function patchChatBackground() {
+              return () => {};
+          }
+          TSX
 
           python3 - <<'PY'
           from pathlib import Path
-          import json
           import re
+
+          DISCORD_URL = "https://discord.gg/5naTPJYemX"
+          GITHUB_URL = "https://github.com/xohus/cloudcord"
+          CLOUDCORD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
+          CLOUDSYNC_ICON = "https://images.weserv.nl/?url=raw.githubusercontent.com/nexpid/CloudSync/main/assets/icon-bright.svg&w=128&h=128&output=png"
 
           replacements = {
               "KettuTweak": "CloudCord",
               "Kettu Enhancements": "CloudCord Enhancements",
               "Kettu": "CloudCord",
-              "https://github.com/C0C0B01/CloudCord": "https://github.com/BypassHub-EX/cloudcord",
-              "https://github.com/C0C0B01/Kettu": "https://github.com/BypassHub-EX/cloudcord",
-              "https://codeberg.org/cocobo1/CloudCord": "https://github.com/BypassHub-EX/cloudcord",
-              "https://codeberg.org/cocobo1/Kettu": "https://github.com/BypassHub-EX/cloudcord",
+              "https://github.com/C0C0B01/CloudCord": GITHUB_URL,
+              "https://github.com/C0C0B01/Kettu": GITHUB_URL,
+              "https://github.com/BypassHub-EX/cloudcord": GITHUB_URL,
+              "https://codeberg.org/cocobo1/CloudCord": GITHUB_URL,
+              "https://codeberg.org/cocobo1/Kettu": GITHUB_URL,
               "Load Kettu without loading add-ons": "Load CloudCord without loading add-ons",
               "Failed to load Kettu!": "Failed to load CloudCord!"
           }
@@ -72,7 +265,6 @@ jobs:
           constants = Path("src/lib/utils/constants.ts")
           if constants.exists():
               text = constants.read_text(encoding="utf-8", errors="ignore")
-              removed_symbol = "CODE" + "BERG"
 
               text = re.sub(
                   r'export const DISCORD_SERVER = ".*?";',
@@ -81,30 +273,16 @@ jobs:
               )
 
               text = re.sub(
-                  rf'\n?export const {removed_symbol} = ".*?";\n?',
-                  '\n',
+                  r'export const CODEBERG = ".*?";',
+                  'export const CODEBERG = "";',
                   text
               )
 
               text = re.sub(
                   r'export const GITHUB = ".*?";',
-                  'export const GITHUB = "https://github.com/BypassHub-EX/cloudcord";',
+                  f'export const GITHUB = "{GITHUB_URL}";',
                   text
               )
-
-              if re.search(r'export const CLOUD_SYNC = ".*?";', text):
-                  text = re.sub(
-                      r'export const CLOUD_SYNC = ".*?";',
-                      'export const CLOUD_SYNC = "https://revenge.nexpid.xyz/cloud-sync";',
-                      text
-                  )
-              elif 'export const GITHUB = "https://github.com/xohus/cloudcord";' in text:
-                  text = text.replace(
-                      'export const GITHUB = "https://github.com/xohus/cloudcord";',
-                      'export const GITHUB = "https://github.com/xohus/cloudcord";\nexport const CLOUD_SYNC = "https://revenge.nexpid.xyz/cloud-sync";'
-                  )
-              else:
-                  text = text.rstrip() + '\nexport const CLOUD_SYNC = "https://revenge.nexpid.xyz/cloud-sync";\n'
 
               constants.write_text(text, encoding="utf-8")
 
@@ -115,7 +293,8 @@ jobs:
               text = text.replace('"PUPU": "Kettu"', '"PUPU": "CloudCord"')
               text = text.replace('"PUPU_URL": "Kettu URL"', '"PUPU_URL": "CloudCord URL"')
               text = text.replace('"CODEBERG": "Codeberg"', '"CODEBERG": ""')
-              text = text.replace('"URL_PLACEHOLDER": "https://codeberg.org/cocobo1/Kettu"', '"URL_PLACEHOLDER": "https://github.com/BypassHub-EX/cloudcord"')
+              text = text.replace('"URL_PLACEHOLDER": "https://codeberg.org/cocobo1/Kettu"', f'"URL_PLACEHOLDER": "{GITHUB_URL}"')
+              text = text.replace('"URL_PLACEHOLDER": "https://github.com/BypassHub-EX/cloudcord"', f'"URL_PLACEHOLDER": "{GITHUB_URL}"')
 
               strings.write_text(text, encoding="utf-8")
 
@@ -123,48 +302,43 @@ jobs:
           if general.exists():
               text = general.read_text(encoding="utf-8", errors="ignore")
 
-              text = re.sub(
-                  r'import\s+\{[^}]*\}\s+from "@lib/utils/constants";',
-                  'import { DISCORD_SERVER, GITHUB, CLOUD_SYNC } from "@lib/utils/constants";',
-                  text,
-                  count=1
+              text = text.replace(
+                  'import { DISCORD_SERVER, GITHUB, CODEBERG } from "@lib/utils/constants";',
+                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
               )
 
-              text = re.sub(r'import\s+\w+\s+from "@assets/icons/codeberg-logo_icon_white\.png";\n', '', text)
+              text = text.replace(
+                  'import { GITHUB, CODEBERG } from "@lib/utils/constants";',
+                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
+              )
 
-              links_rows = '''<TableRowGroup title={Strings.LINKS}>
-                    <TableRow
-                        arrow={true}
-                        label={"Cloud Sync"}
-                        icon={<TableRow.Icon source={findAssetId("img_account_sync_github_white")!} />}
-                        onPress={() => Linking.openURL(CLOUD_SYNC)}
-                    />
+              text = text.replace(
+                  'import { GITHUB } from "@lib/utils/constants";',
+                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
+              )
+
+              text = text.replace(
+                  'import CodebergIcon from "@assets/icons/codeberg-logo_icon_white.png";\n',
+                  ''
+              )
+
+              text = re.sub(
+                  r'\n\s*<TableRow\s+arrow=\{true\}\s+label=\{Strings\.CODEBERG\}[\s\S]*?onPress=\{\(\) => Linking\.openURL\(CODEBERG\)\}\s*/>',
+                  '',
+                  text
+              )
+
+              if "Linking.openURL(DISCORD_SERVER)" not in text:
+                  text = text.replace(
+                      '<TableRowGroup title={Strings.LINKS}>',
+                      '''<TableRowGroup title={Strings.LINKS}>
                     <TableRow
                         arrow={true}
                         label={Strings.DISCORD_SERVER}
                         icon={<TableRow.Icon source={findAssetId("Discord")!} />}
                         onPress={() => Linking.openURL(DISCORD_SERVER)}
-                    />
-                    <TableRow
-                        arrow={true}
-                        label={Strings.GITHUB}
-                        icon={<TableRow.Icon source={findAssetId("img_account_sync_github_white")!} />}
-                        onPress={() => Linking.openURL(GITHUB)}
                     />'''
-
-              text, links_count = re.subn(
-                  r'<TableRowGroup title=\{Strings\.LINKS\}>([\s\S]*?)</TableRowGroup>',
-                  links_rows + '\n                </TableRowGroup>',
-                  text,
-                  count=1
-              )
-              if links_count != 1:
-                  raise RuntimeError("Could not rewrite CloudCord settings links group")
-
-              forbidden = ("Code" + "bergIcon", "CODE" + "BERG", "Linking.openURL(" + "CODE" + "BERG)")
-              found = [token for token in forbidden if token in text]
-              if found:
-                  raise RuntimeError(f"CloudCord settings still reference removed Codeberg symbols: {', '.join(found)}")
+                  )
 
               general.write_text(text, encoding="utf-8")
 
@@ -303,16 +477,6 @@ jobs:
               text = text.replace('version: `"v1.4.1"`', 'version: `"v0.1"`')
               text = text.replace('version: `"v1.4.0"`', 'version: `"v0.1"`')
               build.write_text(text, encoding="utf-8")
-
-          forbidden = ("Code" + "bergIcon", "CODE" + "BERG", "Linking.openURL(" + "CODE" + "BERG)")
-          for path in Path("src").rglob("*"):
-              if not path.is_file() or path.suffix not in exts:
-                  continue
-
-              text = path.read_text(encoding="utf-8", errors="ignore")
-              found = [token for token in forbidden if token in text]
-              if found:
-                  raise RuntimeError(f"{path} still references removed Codeberg symbols: {', '.join(found)}")
           PY
 
       - name: Install dependencies
@@ -328,22 +492,21 @@ jobs:
           bun run build -- --build-minify
 
           mkdir -p ../dist
-          SOURCE_BUNDLE="ke""ttu"
-          cp "dist/$SOURCE_BUNDLE.js" ../dist/cloudcord.js
-          cp "dist/$SOURCE_BUNDLE.min.js" ../dist/cc.js
-          cp "dist/$SOURCE_BUNDLE.min.js" ../dist/cloudcord.min.js
 
-          removed_pattern='Code''bergIcon|CODE''BERG|Linking\.openURL\(CODE''BERG\)'
-          if grep -R -E "$removed_pattern" ../dist; then
-            echo "Generated CloudCord runtime still references removed Codeberg symbols."
-            exit 1
-          fi
+          cp dist/kettu.js ../cloudcord.js
+          cp dist/kettu.min.js ../cc.js
+          cp dist/kettu.min.js ../cloudcord.min.js
+
+          cp dist/kettu.js ../dist/cloudcord.js
+          cp dist/kettu.min.js ../dist/cc.js
+          cp dist/kettu.min.js ../dist/cloudcord.min.js
 
       - name: Commit runtime files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          git add cc.js cloudcord.js cloudcord.min.js
           git add dist/cc.js dist/cloudcord.js dist/cloudcord.min.js
 
           if git diff --cached --quiet; then
@@ -359,6 +522,9 @@ jobs:
         with:
           name: cloudcord-runtime
           path: |
+            cc.js
+            cloudcord.js
+            cloudcord.min.js
             dist/cc.js
             dist/cloudcord.js
             dist/cloudcord.min.js
