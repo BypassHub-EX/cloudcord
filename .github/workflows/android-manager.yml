@@ -1,0 +1,54 @@
+name: Build CloudCord Android Manager
+
+"on":
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "android/**"
+      - ".github/workflows/android-manager.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout CloudCord
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Android module
+        run: |
+          rm -rf /tmp/KettuXposed
+          git clone --depth=1 https://github.com/C0C0B01/KettuXposed.git /tmp/KettuXposed
+          cd /tmp/KettuXposed
+          chmod +x ./gradlew
+          ./gradlew :app:assembleDebug
+          MODULE_APK="$(find /tmp/KettuXposed -path "*/build/outputs/apk/debug/*.apk" | head -n 1)"
+          test -f "$MODULE_APK"
+          mkdir -p "$GITHUB_WORKSPACE/android/app/src/main/assets"
+          cp "$MODULE_APK" "$GITHUB_WORKSPACE/android/app/src/main/assets/cloudcord-module.apk"
+
+      - name: Build CloudCord Manager
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew :app:assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudCordManager-debug
+          path: android/app/build/outputs/apk/debug/*.apk
