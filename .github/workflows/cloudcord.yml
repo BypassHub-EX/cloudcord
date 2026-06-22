@@ -20,7 +20,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Clone upstream source
+      - name: Clone Kettu source
         run: |
           set -e
           SOURCE_DIR="_cloudcord_source"
@@ -28,14 +28,13 @@ jobs:
           rm -rf "$SOURCE_DIR"
           git clone --depth=1 "$SOURCE_REPO" "$SOURCE_DIR"
 
-      - name: Apply CloudCord branding
+      - name: Apply CloudCord patches
         run: |
           set -e
           cd _cloudcord_source
 
-          if [ -f "../assets/cloudcord-favicon.png" ]; then
-            SOURCE_ICON="ke""ttu.png"
-            cp "../assets/cloudcord-favicon.png" "src/assets/icons/$SOURCE_ICON"
+          if [ -f "../cloudcord-favicon.png" ]; then
+            cp "../cloudcord-favicon.png" "src/assets/icons/kettu.png"
           fi
 
           python3 - <<'PY'
@@ -43,22 +42,16 @@ jobs:
           import json
           import re
 
-          source_brand = "Ke" + "ttu"
-          source_tweak = source_brand + "Tweak"
-          source_enhancements = source_brand + " Enhancements"
-          source_codeberg = "https://codeberg.org/cocobo1/" + source_brand
-          source_github = "https://github.com/C0C0B01/" + source_brand
-
           replacements = {
-              source_tweak: "CloudCord",
-              source_enhancements: "CloudCord Enhancements",
-              source_brand: "CloudCord",
-              "https://github.com/C0C0B01/CloudCord": "https://github.com/xohus/cloudcord",
-              source_github: "https://github.com/xohus/cloudcord",
-              "https://codeberg.org/cocobo1/CloudCord": "https://github.com/xohus/cloudcord",
-              source_codeberg: "https://github.com/xohus/cloudcord",
-              f"Load {source_brand} without loading add-ons": "Load CloudCord without loading add-ons",
-              f"Failed to load {source_brand}!": "Failed to load CloudCord!"
+              "KettuTweak": "CloudCord",
+              "Kettu Enhancements": "CloudCord Enhancements",
+              "Kettu": "CloudCord",
+              "https://github.com/C0C0B01/CloudCord": "https://github.com/BypassHub-EX/cloudcord",
+              "https://github.com/C0C0B01/Kettu": "https://github.com/BypassHub-EX/cloudcord",
+              "https://codeberg.org/cocobo1/CloudCord": "https://github.com/BypassHub-EX/cloudcord",
+              "https://codeberg.org/cocobo1/Kettu": "https://github.com/BypassHub-EX/cloudcord",
+              "Load Kettu without loading add-ons": "Load CloudCord without loading add-ons",
+              "Failed to load Kettu!": "Failed to load CloudCord!"
           }
 
           exts = {".ts", ".tsx", ".js", ".jsx", ".json", ".mjs", ".md"}
@@ -83,7 +76,7 @@ jobs:
 
               text = re.sub(
                   r'export const DISCORD_SERVER = ".*?";',
-                  'export const DISCORD_SERVER = "https://discord.gg/5naTPJYemX";',
+                  f'export const DISCORD_SERVER = "{DISCORD_URL}";',
                   text
               )
 
@@ -95,7 +88,7 @@ jobs:
 
               text = re.sub(
                   r'export const GITHUB = ".*?";',
-                  'export const GITHUB = "https://github.com/xohus/cloudcord";',
+                  'export const GITHUB = "https://github.com/BypassHub-EX/cloudcord";',
                   text
               )
 
@@ -119,13 +112,10 @@ jobs:
           if strings.exists():
               text = strings.read_text(encoding="utf-8", errors="ignore")
 
-              text = text.replace(f'"PUPU": "{source_brand}"', '"PUPU": "CloudCord"')
-              text = text.replace(f'"PUPU_URL": "{source_brand} URL"', '"PUPU_URL": "CloudCord URL"')
-              text = text.replace(f'"URL_PLACEHOLDER": "{source_codeberg}"', '"URL_PLACEHOLDER": "https://github.com/xohus/cloudcord"')
-
-              data = json.loads(text)
-              data.pop("CODE" + "BERG", None)
-              text = json.dumps(data, ensure_ascii=False, indent=4) + "\n"
+              text = text.replace('"PUPU": "Kettu"', '"PUPU": "CloudCord"')
+              text = text.replace('"PUPU_URL": "Kettu URL"', '"PUPU_URL": "CloudCord URL"')
+              text = text.replace('"CODEBERG": "Codeberg"', '"CODEBERG": ""')
+              text = text.replace('"URL_PLACEHOLDER": "https://codeberg.org/cocobo1/Kettu"', '"URL_PLACEHOLDER": "https://github.com/BypassHub-EX/cloudcord"')
 
               strings.write_text(text, encoding="utf-8")
 
@@ -178,10 +168,140 @@ jobs:
 
               general.write_text(text, encoding="utf-8")
 
+          settings_index = Path("src/core/ui/settings/index.ts")
+          if settings_index.exists():
+              text = settings_index.read_text(encoding="utf-8", errors="ignore")
+
+              text = text.replace(
+                  'icon: { uri: PupuIcon },',
+                  f'icon: {{ uri: "{CLOUDCORD_ICON}" }},'
+              )
+
+              text = re.sub(
+                  r'\n\s*\{\s*key:\s*"CLOUD_SYNC"[\s\S]*?(?:render:\s*\(\) => import\("[^"]+"\)|onPress:\s*\(\) => [^\n]+)[\s\S]*?\n\s*\},',
+                  '',
+                  text
+              )
+
+              cloud_sync_item = f'''            {{
+                  key: "CLOUD_SYNC",
+                  title: () => "Cloud Sync",
+                  icon: {{ uri: "{CLOUDSYNC_ICON}" }},
+                  render: () => import("@core/ui/settings/pages/CloudSync")
+              }},'''
+
+              plugin_row_pattern = r'(\n\s*\{\s*key:\s*"BUNNY_PLUGINS",)'
+
+              if 'key: "CLOUD_SYNC"' not in text:
+                  text = re.sub(
+                      plugin_row_pattern,
+                      lambda match: "\n" + cloud_sync_item + match.group(1),
+                      text,
+                      count=1
+                  )
+
+              settings_index.write_text(text, encoding="utf-8")
+
+          vendetta_api = Path("src/core/vendetta/api.tsx")
+          if vendetta_api.exists():
+              text = vendetta_api.read_text(encoding="utf-8", errors="ignore")
+
+              marker = 'import { VdPluginManager, VendettaPlugin } from "./plugins";\n'
+
+              patched_forms_code = r'''
+          const makeIcon = (leading: any) => leading;
+
+          const PatchedFormRow = (props: any) => createElement(commonComponents.TableRow, {
+              label: props.label,
+              subLabel: props.subLabel,
+              icon: makeIcon(props.leading),
+              trailing: props.trailing,
+              onPress: props.onPress,
+              disabled: props.disabled,
+              arrow: props.arrow
+          });
+
+          (PatchedFormRow as any).Icon = (Forms as any).FormRow?.Icon ?? commonComponents.TableRow.Icon;
+          (PatchedFormRow as any).Arrow = (Forms as any).FormRow?.Arrow ?? commonComponents.TableRow.Arrow;
+
+          const PatchedFormSwitchRow = (props: any) => createElement(commonComponents.TableSwitchRow, {
+              label: props.label,
+              subLabel: props.subLabel,
+              icon: makeIcon(props.leading),
+              value: !!props.value,
+              onValueChange: props.onValueChange,
+              disabled: props.disabled
+          });
+
+          const PatchedFormSection = (props: any) => createElement(commonComponents.TableRowGroup, {
+              title: props.title,
+              ...props
+          }, props.children);
+
+          const PatchedForms = {
+              ...Forms,
+              FormRow: PatchedFormRow,
+              FormSwitchRow: PatchedFormSwitchRow,
+              FormSection: PatchedFormSection,
+              FormDivider: () => null
+          };
+          '''
+
+              if "const PatchedForms =" not in text:
+                  text = text.replace(marker, marker + patched_forms_code + "\n")
+
+              text = text.replace(
+                  "                Forms,\n                General: common.ReactNative,",
+                  "                Forms: PatchedForms,\n                General: common.ReactNative,"
+              )
+
+              vendetta_api.write_text(text, encoding="utf-8")
+
+          plugin_info = Path("src/core/ui/settings/pages/Plugins/sheets/PluginInfoActionSheet.tsx")
+          if plugin_info.exists():
+              text = plugin_info.read_text(encoding="utf-8", errors="ignore")
+
+              if 'ScaledPluginSettings' not in text:
+                  text = text.replace(
+                      'import TitleComponent from "./TitleComponent";',
+                      'import TitleComponent from "./TitleComponent";\nimport ScaledPluginSettings from "@core/ui/settings/components/ScaledPluginSettings";'
+                  )
+
+              text = text.replace(
+                  'render: plugin.getPluginSettingsComponent(),',
+                  'render: () => <ScaledPluginSettings component={plugin.getPluginSettingsComponent()!} />,'
+              )
+
+              plugin_info.write_text(text, encoding="utf-8")
+
+          vd_plugin_info = Path("src/core/ui/settings/pages/Plugins/sheets/VdPluginInfoActionSheet.tsx")
+          if vd_plugin_info.exists():
+              text = vd_plugin_info.read_text(encoding="utf-8", errors="ignore")
+
+              if 'ScaledPluginSettings' not in text:
+                  text = text.replace(
+                      'import { PluginInfoActionSheetProps } from "./common";',
+                      'import { PluginInfoActionSheetProps } from "./common";\nimport ScaledPluginSettings from "@core/ui/settings/components/ScaledPluginSettings";'
+                  )
+
+              text = text.replace(
+                  'render: SettingsComponent,',
+                  'render: () => <ScaledPluginSettings component={SettingsComponent} />,'
+              )
+
+              text = text.replace(
+                  'render: SettingsComponent',
+                  'render: () => <ScaledPluginSettings component={SettingsComponent} />'
+              )
+
+              vd_plugin_info.write_text(text, encoding="utf-8")
+
           build = Path("scripts/build.mjs")
           if build.exists():
               text = build.read_text(encoding="utf-8", errors="ignore")
               text = text.replace('version: `"v1.4.2"`', 'version: `"v0.1"`')
+              text = text.replace('version: `"v1.4.1"`', 'version: `"v0.1"`')
+              text = text.replace('version: `"v1.4.0"`', 'version: `"v0.1"`')
               build.write_text(text, encoding="utf-8")
 
           forbidden = ("Code" + "bergIcon", "CODE" + "BERG", "Linking.openURL(" + "CODE" + "BERG)")
