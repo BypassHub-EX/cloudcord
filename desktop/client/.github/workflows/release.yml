@@ -1,0 +1,107 @@
+name: Build & Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build-sincord:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop.asar
+          path: dist/desktop.asar
+
+  build-installer:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            output: Sinlotl-windows-amd64.exe
+            goos: windows
+            goarch: amd64
+          - os: macos-latest
+            output: Sinlotl-darwin-arm64
+            goos: darwin
+            goarch: arm64
+          - os: macos-13
+            output: Sinlotl-darwin-amd64
+            goos: darwin
+            goarch: amd64
+          - os: ubuntu-latest
+            output: Sinlotl-linux-amd64
+            goos: linux
+            goarch: amd64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+          cache-dependency-path: installer/go.sum
+
+      - name: Install Linux deps
+        if: matrix.goos == 'linux'
+        run: sudo apt-get install -y libgl1-mesa-dev xorg-dev pkg-config
+
+      - name: Install Windows deps (MinGW)
+        if: matrix.goos == 'windows'
+        shell: pwsh
+        run: |
+          choco install mingw --no-progress -y
+          Add-Content $env:GITHUB_PATH "C:\ProgramData\mingw64\mingw64\bin"
+
+      - name: Build installer
+        working-directory: installer
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '1'
+        run: go build -trimpath -ldflags="-s -w" -o ${{ matrix.output }} .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: installer/${{ matrix.output }}
+
+  release:
+    needs: [build-sincord, build-installer]
+    if: always() && needs.build-sincord.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Latest Release
+          files: artifacts/*
+          generate_release_notes: true
+          make_latest: true

@@ -1,86 +1,64 @@
 # CloudCord Desktop
 
-CloudCord Desktop targets the installed Discord desktop `.exe` on Windows. It is not a website, not browser support, not a browser extension, and not only a CSS theme.
+CloudCord Desktop is an open-source Discord desktop client mod. It targets an installed Discord desktop `.exe` and injects the CloudCord desktop bundle into Discord using an in-repo installer.
 
-Discord desktop is an Electron app. CloudCord Desktop uses a Vencord/Sincord-style architecture with a Windows setup app, a desktop injector, a separate desktop runtime, plugins, patches, local bundled assets, backups, and repair/uninstall actions.
+CloudCord Desktop is based on Sincord/Vencord-style architecture. Sincord is the primary source base for this tree, including the in-repo Go installer and `dist/desktop` runtime output. Vencord is a major architectural reference for runtime patches, plugins, settings, and themes.
 
-iOS and Android continue to use the mobile runtime. The desktop installer does not use the mobile React Native runtime as the desktop runtime, and it does not load `dist/cc.js` as the desktop runtime.
-
-## Structure
-
-- `runtime`: CloudCord Desktop renderer runtime, plugins, patches, and theme.
-- `installer`: CloudCord Setup for Windows Discord desktop.
-- `.github/workflows/desktop.yml`: Windows build workflow for runtime and installer.
+CloudCord Desktop is separate from CloudCord iOS and Android. iOS and Android use the React Native/mobile runtime. Desktop uses the desktop client mod runtime built from `desktop/client`.
 
 ## Build
 
-```sh
-cd desktop/runtime
-pnpm install
-pnpm typecheck
-pnpm build
-pnpm package
+From the repository root:
 
-cd ../installer
+```sh
+cd desktop/client
 pnpm install
 pnpm typecheck
 pnpm build
-pnpm package
+pnpm build:installer
 ```
 
-Expected installer artifact:
+On Windows, the installer build outputs:
 
 ```text
-desktop/installer/dist/CloudCordSetup.exe
+desktop/client/dist/CloudCordSetup.exe
 ```
+
+The desktop runtime bundle is generated in:
+
+```text
+desktop/client/dist/desktop
+```
+
+## Workflow
+
+Run the `CloudCord Desktop` GitHub Actions workflow manually, or push changes under `desktop/**` or `.github/workflows/desktop.yml`. The workflow builds the desktop runtime and Windows installer, then uploads `CloudCordDesktop-Windows`.
 
 ## Install
 
-Run `CloudCordSetup.exe`, confirm the detected Discord desktop path, then choose `Install CloudCord`.
-
-The installer supports Discord Stable first and has detection paths ready for PTB and Canary:
-
-- `%LOCALAPPDATA%\Discord`
-- `%LOCALAPPDATA%\Discord\app-*`
-- `%LOCALAPPDATA%\Discord\app-*\Discord.exe`
-- `%APPDATA%\discord`
-- `%LOCALAPPDATA%\DiscordPTB`
-- `%LOCALAPPDATA%\DiscordCanary`
-
-If Discord is not found, the setup app shows a clear error and does not modify folders.
+Build or download `CloudCordSetup.exe`, close Discord fully from the system tray, run the installer, select the Discord installation, and choose `Install CloudCord`.
 
 ## Uninstall
 
-Run `CloudCordSetup.exe` and choose `Uninstall CloudCord`. The installer restores the latest backup and removes CloudCord files injected by the installer. It does not delete Discord user data, settings, credentials, or tokens.
+Run `CloudCordSetup.exe`, select the patched Discord installation, and choose `Uninstall CloudCord`.
 
 ## Repair
 
-Run `CloudCordSetup.exe` and choose `Repair CloudCord`. Repair restores the latest backup when available and then installs CloudCord Desktop again while keeping backups.
+Run `CloudCordSetup.exe`, select the Discord installation, and choose `Repair CloudCord`. Repair rebuilds the CloudCord desktop bundle path and reapplies the Discord desktop patcher flow.
 
-## Logs And Backups
+## Logs
 
-Logs:
+Use `Open Logs` in CloudCord Setup. Installer logs are written by the Go installer and are the first place to inspect failed inject, uninject, or repair operations.
 
-```text
-%APPDATA%\CloudCord\Logs
+## Test
+
+```sh
+cd desktop/client
+pnpm typecheck
+pnpm build
+pnpm build:installer
 ```
 
-Backups:
+## Known Risks
 
-```text
-%APPDATA%\CloudCord\Backups
-```
-
-Every modified Discord desktop file or CloudCord-created desktop injection directory is backed up before install changes are written.
-
-## Tester Notes
-
-Test on a Windows machine with Discord Stable installed. Run install, start Discord, use the CloudCord button inside Discord, then test repair and uninstall. If it fails, send the setup window logs plus `%APPDATA%\CloudCord\Logs\desktop-installer.log`.
-
-## Privacy
-
-CloudCord Desktop does not read Discord tokens, collect credentials, add telemetry, hide from the user, or install hidden startup persistence.
-
-## Credits
-
-CloudCord Desktop follows the public desktop injection architecture used by projects such as Vencord and Sincord. No upstream Vencord or Sincord source code is copied into this tree.
+Discord desktop updates can replace `app.asar` and require repair. Discord client mods may violate Discord terms of service. Plugin patches depend on Discord internals and can break after Discord updates. Antivirus or Windows SmartScreen can flag unsigned community installers. Always close Discord before installing, uninstalling, or repairing.
