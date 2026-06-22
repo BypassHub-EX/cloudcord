@@ -9,11 +9,10 @@ on:
 
 jobs:
   windows:
-    name: Build CloudCord Desktop Windows
     runs-on: windows-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout CloudCord
         uses: actions/checkout@v4
 
       - name: Setup Node
@@ -25,80 +24,221 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 11.0.9
-          run_install: false
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: stable
 
-      - name: Install Windows build dependencies
+      - name: Install Windows Go GUI dependencies
         shell: pwsh
         run: |
           choco install mingw --no-progress -y
-          $mingwPaths = @(
-            "C:\ProgramData\mingw64\mingw64\bin",
-            "C:\tools\mingw64\bin",
-            "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
-          )
-          foreach ($p in $mingwPaths) {
-            if (Test-Path $p) {
-              Add-Content $env:GITHUB_PATH $p
-            }
-          }
-          go version
-          node --version
-          pnpm --version
+          Add-Content $env:GITHUB_PATH "C:\ProgramData\mingw64\mingw64\bin"
 
-      - name: Install client dependencies
-        working-directory: desktop/client
+      - name: Prepare real CloudCord Desktop source
         shell: pwsh
         run: |
-          pnpm install --no-frozen-lockfile
+          if (Test-Path "_sincord") {
+            Remove-Item "_sincord" -Recurse -Force
+          }
+
+          if (Test-Path "desktop/client") {
+            Remove-Item "desktop/client" -Recurse -Force
+          }
+
+          git clone --depth 1 https://github.com/sincord/sincord _sincord
+
+          New-Item -ItemType Directory -Force -Path "desktop/client" | Out-Null
+
+          robocopy "_sincord" "desktop/client" /E /XD ".git" ".github" "node_modules" "dist"
+          if ($LASTEXITCODE -le 7) {
+            $global:LASTEXITCODE = 0
+          } else {
+            exit $LASTEXITCODE
+          }
+
+      - name: Patch Sincord into CloudCord
+        shell: pwsh
+        run: |
+          node - <<'NODE'
+          const fs = require("fs");
+          const path = require("path");
+
+          const root = process.cwd();
+          const client = path.join(root, "desktop", "client");
+          const pkgPath = path.join(client, "package.json");
+
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+          pkg.name = "cloudcord";
+          pkg.private = "true";
+          pkg.version = "0.1.0";
+          pkg.description = "CloudCord desktop client mod";
+          pkg.homepage = "https://github.com/xohus/cloudcord#readme";
+          pkg.author = "Xohus";
+          pkg.license = "GPL-3.0-or-later";
+          pkg.bugs = { url: "https://github.com/xohus/cloudcord/issues" };
+          pkg.repository = {
+            type: "git",
+            url: "git+https://github.com/xohus/cloudcord.git"
+          };
+
+          if (!pkg.scripts) pkg.scripts = {};
+          pkg.scripts.typecheck = "pnpm testTsc";
+          pkg.scripts["build:installer"] = "bash scripts/build-installer.sh";
+
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 4) + "\n");
+
+          const exts = new Set([
+            ".ts",
+            ".tsx",
+            ".js",
+            ".jsx",
+            ".mjs",
+            ".cjs",
+            ".json",
+            ".md",
+            ".go",
+            ".mod",
+            ".sh",
+            ".css",
+            ".scss",
+            ".less",
+            ".html",
+            ".yml",
+            ".yaml",
+            ".toml"
+          ]);
+
+          function walk(dir) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                if (
+                  entry.name === ".git" ||
+                  entry.name === "node_modules" ||
+                  entry.name === "dist" ||
+                  entry.name === ".next"
+                ) continue;
+                walk(full);
+                continue;
+              }
+
+              if (!exts.has(path.extname(entry.name))) continue;
+
+              let text;
+              try {
+                text = fs.readFileSync(full, "utf8");
+              } catch {
+                continue;
+              }
+
+              const next = text
+                .replaceAll("Sincord", "CloudCord")
+                .replaceAll("SINCORD", "CLOUDCORD")
+                .replaceAll("Sinlotl", "CloudCordSetup")
+                .replaceAll("The better Discord client mod", "CloudCord desktop client mod")
+                .replaceAll("https://github.com/Sincord/Sincord", "https://github.com/xohus/cloudcord")
+                .replaceAll("git+https://github.com/Sincord/Sincord.git", "git+https://github.com/xohus/cloudcord.git");
+
+              if (next !== text) {
+                fs.writeFileSync(full, next);
+              }
+            }
+          }
+
+          walk(client);
+
+          fs.writeFileSync(
+            path.join(client, "CLOUDCORD_NOTES.md"),
+            [
+              "# CloudCord Desktop Notes",
+              "",
+              "CloudCord Desktop is an open-source Discord desktop client mod based on the Sincord/Vencord-style desktop architecture.",
+              "",
+              "CloudCord Desktop targets installed Discord desktop, not Discord web and not a browser extension.",
+              "",
+              "Mobile CloudCord uses the React Native runtime from the main project. Desktop CloudCord uses the desktop runtime built from this client tree.",
+              ""
+            ].join("\n")
+          );
+
+          fs.writeFileSync(
+            path.join(client, "CREDITS.md"),
+            [
+              "# Credits",
+              "",
+              "CloudCord Desktop is maintained by Xohus.",
+              "",
+              "CloudCord Desktop is based on Sincord and follows the Vencord/Sincord-style Discord desktop client mod architecture.",
+              "",
+              "Upstream projects:",
+              "",
+              "- Sincord: https://github.com/sincord/sincord",
+              "- Vencord: https://github.com/Vendicated/Vencord",
+              "",
+              "CloudCord Desktop keeps GPL-3.0-or-later licensing and upstream attribution.",
+              ""
+            ].join("\n")
+          );
+          NODE
+
+      - name: Verify required build files
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "desktop/client/scripts/build/build.mjs")) {
+            throw "Missing desktop/client/scripts/build/build.mjs after cloning Sincord"
+          }
+
+          if (-not (Test-Path "desktop/client/scripts/build-installer.sh")) {
+            throw "Missing desktop/client/scripts/build-installer.sh after cloning Sincord"
+          }
+
+          if (-not (Test-Path "desktop/client/installer")) {
+            throw "Missing desktop/client/installer after cloning Sincord"
+          }
+
+      - name: Install dependencies
+        working-directory: desktop/client
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Typecheck
+        working-directory: desktop/client
+        run: pnpm typecheck
 
       - name: Build desktop runtime
         working-directory: desktop/client
+        run: pnpm build
+
+      - name: Build Windows installer
+        working-directory: desktop/client
+        shell: bash
+        run: pnpm build:installer
+
+      - name: Stage artifacts
         shell: pwsh
         run: |
-          pnpm build
-          if (-not (Test-Path "dist/desktop")) {
+          $installer = Get-ChildItem -Path desktop/client -Recurse -Filter CloudCordSetup.exe | Select-Object -First 1
+
+          if (-not $installer) {
+            $fallback = Get-ChildItem -Path desktop/client -Recurse -Filter "*.exe" | Select-Object -First 1
+            if (-not $fallback) {
+              throw "No installer .exe was produced"
+            }
+
+            New-Item -ItemType Directory -Force -Path desktop/client/dist | Out-Null
+            Copy-Item $fallback.FullName desktop/client/dist/CloudCordSetup.exe -Force
+          } else {
+            New-Item -ItemType Directory -Force -Path desktop/client/dist | Out-Null
+            Copy-Item $installer.FullName desktop/client/dist/CloudCordSetup.exe -Force
+          }
+
+          if (-not (Test-Path desktop/client/dist/desktop)) {
             throw "desktop/client/dist/desktop was not produced"
           }
 
-      - name: Build CloudCord Setup
-        working-directory: desktop/client/installer
-        shell: pwsh
-        run: |
-          go build -o CloudCordSetup.exe .
-          if (-not (Test-Path "CloudCordSetup.exe")) {
-            throw "CloudCordSetup.exe was not produced"
-          }
-
-      - name: Stage desktop artifact
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path desktop/client/dist | Out-Null
-
-          if (-not (Test-Path "desktop/client/installer/CloudCordSetup.exe")) {
-            throw "CloudCordSetup.exe missing from installer folder"
-          }
-
-          if (-not (Test-Path "desktop/client/dist/desktop")) {
-            throw "desktop/client/dist/desktop missing"
-          }
-
-          Copy-Item "desktop/client/installer/CloudCordSetup.exe" "desktop/client/dist/CloudCordSetup.exe" -Force
-
-          if (-not (Test-Path "desktop/client/CREDITS.md")) {
-            "CloudCord Desktop`nBased on Sincord/Vencord-style architecture.`n" | Out-File -Encoding utf8 "desktop/client/CREDITS.md"
-          }
-
-          if (-not (Test-Path "desktop/client/CLOUDCORD_NOTES.md")) {
-            "CloudCord Desktop build artifact.`n" | Out-File -Encoding utf8 "desktop/client/CLOUDCORD_NOTES.md"
-          }
-
-          if (-not (Test-Path "desktop/client/dist/CloudCordSetup.exe")) {
-            throw "Final CloudCordSetup.exe missing"
+          if (-not (Test-Path desktop/client/dist/CloudCordSetup.exe)) {
+            throw "desktop/client/dist/CloudCordSetup.exe was not staged"
           }
 
       - name: Upload desktop artifact
