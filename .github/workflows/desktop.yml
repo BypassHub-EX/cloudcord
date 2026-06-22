@@ -1,76 +1,68 @@
 name: CloudCord Desktop
 
 on:
-  workflow_dispatch:
-  push:
-    paths:
-      - "desktop/**"
-      - ".github/workflows/desktop.yml"
+workflow_dispatch:
+push:
+paths:
+- “desktop/**”
+- “.github/workflows/desktop.yml”
 
 jobs:
-  windows:
-    runs-on: windows-latest
+windows:
+runs-on: windows-latest
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: stable
-
-      - name: Install Windows Go GUI dependencies
-        shell: pwsh
-        run: |
-          choco install mingw --no-progress -y
-          Add-Content $env:GITHUB_PATH "C:\ProgramData\mingw64\mingw64\bin"
-
-      - name: Install dependencies
-        working-directory: desktop/client
-        run: pnpm install
-
-      - name: Typecheck
-        working-directory: desktop/client
-        run: pnpm typecheck
-
-      - name: Build desktop runtime
-        working-directory: desktop/client
-        run: pnpm build
-
-      - name: Build Windows installer
-        working-directory: desktop/client
-        shell: bash
-        run: pnpm build:installer
-
-      - name: Stage installer artifact
-        shell: pwsh
-        run: |
-          $installer = Get-ChildItem -Path desktop/client -Recurse -Filter CloudCordSetup.exe | Select-Object -First 1
-          if (-not $installer) {
-            throw "CloudCordSetup.exe was not produced"
-          }
-          New-Item -ItemType Directory -Force -Path desktop/client/dist | Out-Null
-          Copy-Item $installer.FullName desktop/client/dist/CloudCordSetup.exe -Force
-          if (-not (Test-Path desktop/client/dist/desktop)) {
-            throw "desktop/client/dist/desktop was not produced"
-          }
-
-      - name: Upload desktop artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: CloudCordDesktop-Windows
-          path: |
-            desktop/client/dist/CloudCordSetup.exe
-            desktop/client/dist/desktop/**
-            desktop/client/CREDITS.md
-            desktop/client/CLOUDCORD_NOTES.md
-            desktop/README.md
+steps:
+  - name: Checkout
+    uses: actions/checkout@v4
+  - name: Setup Node
+    uses: actions/setup-node@v4
+    with:
+      node-version: 22
+  - name: Setup pnpm
+    uses: pnpm/action-setup@v4
+    with:
+      version: 11.0.9
+  - name: Setup Go
+    uses: actions/setup-go@v5
+    with:
+      go-version: stable
+  - name: Install Windows Go GUI dependencies
+    shell: pwsh
+    run: |
+      choco install mingw --no-progress -y
+      Add-Content $env:GITHUB_PATH "C:\ProgramData\mingw64\mingw64\bin"
+  - name: Install dependencies
+    working-directory: desktop/client
+    run: pnpm install
+  - name: Typecheck
+    working-directory: desktop/client
+    run: pnpm typecheck
+  - name: Build desktop runtime
+    working-directory: desktop/client
+    run: pnpm build
+  - name: Build Windows installer
+    working-directory: desktop/client
+    shell: bash
+    run: pnpm build:installer
+  - name: Stage installer artifact
+    shell: pwsh
+    run: |
+      $installer = Get-ChildItem -Path desktop/client -Recurse -Filter CloudCordSetup.exe | Select-Object -First 1
+      if (-not $installer) {
+        throw "CloudCordSetup.exe was not produced"
+      }
+      New-Item -ItemType Directory -Force -Path desktop/client/dist | Out-Null
+      Copy-Item $installer.FullName desktop/client/dist/CloudCordSetup.exe -Force
+      if (-not (Test-Path desktop/client/dist/desktop)) {
+        throw "desktop/client/dist/desktop was not produced"
+      }
+  - name: Upload desktop artifact
+    uses: actions/upload-artifact@v4
+    with:
+      name: CloudCordDesktop-Windows
+      path: |
+        desktop/client/dist/CloudCordSetup.exe
+        desktop/client/dist/desktop/**
+        desktop/client/CREDITS.md
+        desktop/client/CLOUDCORD_NOTES.md
+        desktop/README.md
