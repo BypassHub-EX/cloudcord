@@ -13,11 +13,11 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "cocobo1.pupu.manager"
+        applicationId = "gg.xohus.cloudcord.manager"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1220
-        versionName = "1.2.2"
+        versionCode = 100
+        versionName = "0.1.0"
 
         buildConfigField("String", "GIT_BRANCH", "\"${getCurrentBranch()}\"")
         buildConfigField("String", "GIT_COMMIT", "\"${getLatestCommit()}\"")

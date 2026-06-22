@@ -1,0 +1,130 @@
+name: Build CloudCord Android Manager
+
+"on":
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "android/**"
+      - ".github/workflows/android-manager.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          set -euo pipefail
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Clone KettuXposed module
+        run: |
+          set -euo pipefail
+          rm -rf _kettu_xposed
+          git clone --depth=1 https://github.com/C0C0B01/KettuXposed.git _kettu_xposed
+
+      - name: Patch KettuXposed runtime URL
+        run: |
+          set -euo pipefail
+          cd _kettu_xposed
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          runtime_url = "https://raw.githubusercontent.com/xohus/cloudcord/main/dist/cc.js"
+          updater = Path("app/src/main/kotlin/io/github/revenge/xposed/modules/UpdaterModule.kt")
+          if not updater.exists():
+              raise SystemExit("KettuXposed UpdaterModule.kt was not found")
+
+          text = updater.read_text(encoding="utf-8")
+          if "DEFAULT_BASE_URL" not in text or "resolveTargetUrl" not in text:
+              raise SystemExit("KettuXposed runtime resolver was not found in UpdaterModule.kt")
+
+          text = re.sub(
+              r'\n\s*private const val DEFAULT_BASE_URL = ".*?"',
+              f'\n    private const val DEFAULT_BUNDLE_URL = "{runtime_url}"',
+              text,
+              count=1
+          )
+          text = re.sub(
+              r'\n\s*private const val DEFAULT_BUNDLE_NAME = ".*?"',
+              '',
+              text,
+              count=1
+          )
+
+          replacement = '''    private suspend fun resolveTargetUrl(_client: HttpClient): String {
+          if (config.customLoadUrl.enabled && config.customLoadUrl.url.isNotEmpty()) {
+              return config.customLoadUrl.url
+          }
+
+          return DEFAULT_BUNDLE_URL
+      }'''
+
+          text, count = re.subn(
+              r'    private suspend fun resolveTargetUrl\(client: HttpClient\): String \{[\s\S]*?\n    \}\n\n    override fun onActivity',
+              replacement + '\n\n    override fun onActivity',
+              text,
+              count=1
+          )
+          if count != 1:
+              raise SystemExit("Could not patch KettuXposed resolveTargetUrl")
+
+          updater.write_text(text, encoding="utf-8")
+          print(f"Patched {updater} to load {runtime_url}")
+          PY
+
+      - name: Build KettuXposed module
+        run: |
+          set -euo pipefail
+          export JAVA_HOME="${JAVA_HOME_21_X64:-$JAVA_HOME}"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          cd _kettu_xposed
+          chmod +x ./gradlew
+          ./gradlew :app:assembleDebug
+
+      - name: Bundle module into manager assets
+        run: |
+          set -euo pipefail
+          module_apk="$(find _kettu_xposed/app/build/outputs/apk/debug -type f -name '*.apk' | head -n 1 || true)"
+          if [ -z "$module_apk" ]; then
+            echo "KettuXposed debug APK was not found under _kettu_xposed/app/build/outputs/apk/debug" >&2
+            find _kettu_xposed/app/build/outputs -type f >&2 || true
+            exit 1
+          fi
+          mkdir -p android/app/src/main/assets
+          cp "$module_apk" android/app/src/main/assets/cloudcord-module.apk
+          test -s android/app/src/main/assets/cloudcord-module.apk
+
+      - name: Build Android manager
+        run: |
+          set -euo pipefail
+          export JAVA_HOME="${JAVA_HOME_21_X64:-$JAVA_HOME}"
+          export PATH="$JAVA_HOME/bin:$PATH"
+          cd android
+          chmod +x ./gradlew
+          ./gradlew :app:assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudCordManager-debug
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

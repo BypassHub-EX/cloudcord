@@ -11,7 +11,7 @@ object Constants {
     )
 
     // NOTE: This is no longer used
-    val VENDETTA_DIR = Environment.getExternalStorageDirectory().resolve("Bunny")
+    val VENDETTA_DIR = Environment.getExternalStorageDirectory().resolve("CloudCord")
 
     val DUMMY_VERSION = DiscordVersion(1, 0, DiscordVersion.Type.STABLE)
 

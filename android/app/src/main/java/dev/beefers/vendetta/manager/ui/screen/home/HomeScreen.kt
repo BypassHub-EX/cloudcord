@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -105,60 +106,103 @@ class HomeScreen : Screen {
                 modifier = Modifier
                     .padding(pv)
                     .padding(16.dp)
-                    .fillMaxWidth()
+                    .fillMaxSize()
             ) {
-                AppIcon(
-                    customIcon = prefs.patchIcon,
-                    releaseChannel = prefs.channel,
-                    modifier = Modifier.size(60.dp)
-                )
-
-                Text(
-                    text = prefs.appName,
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    AnimatedVisibility(visible = currentVersion != null) {
-                        Text(
-                            text = stringResource(
-                                R.string.version_current,
-                                currentVersion.toString()
-                            ),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = LocalContentColor.current.copy(alpha = 0.5f),
-                            textAlign = TextAlign.Center
-                        )
+                HeroSection(
+                    prefs = prefs,
+                    latestVersion = latestVersion,
+                    currentVersion = currentVersion,
+                    onInstall = {
+                        navigator.navigate(InstallerScreen(latestVersion!!))
                     }
+                )
 
-                    val latestLabel =
-                        if (prefs.discordVersion.isNotBlank()) R.string.version_target else R.string.version_latest
+                StatusSection(
+                    currentVersion = currentVersion,
+                    latestVersion = latestVersion,
+                    targetLabel = if (prefs.discordVersion.isNotBlank()) R.string.version_target else R.string.version_latest
+                )
 
-                    AnimatedVisibility(visible = latestVersion != null) {
+                QuickActions(viewModel = viewModel)
+
+                ElevatedCard(
+                    modifier = Modifier
+                        .fillMaxSize()
+                ) {
+                    Text(
+                        text = stringResource(R.string.home_updates_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 0.dp)
+                    )
+                    CommitList(
+                        commits = viewModel.commits.collectAsLazyPagingItems()
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    @OptIn(ExperimentalMaterial3Api::class)
+    private fun TitleBar() {
+        TopAppBar(
+            title = { Text(stringResource(R.string.title_home)) },
+            actions = { Actions() }
+        )
+    }
+
+    @Composable
+    private fun HeroSection(
+        prefs: PreferenceManager,
+        latestVersion: DiscordVersion?,
+        currentVersion: DiscordVersion?,
+        onInstall: () -> Unit
+    ) {
+        ElevatedCard(
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(20.dp)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AppIcon(
+                        customIcon = prefs.patchIcon,
+                        releaseChannel = prefs.channel,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         Text(
-                            text = stringResource(latestLabel, latestVersion.toString()),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = LocalContentColor.current.copy(alpha = 0.5f),
-                            textAlign = TextAlign.Center
+                            text = stringResource(R.string.home_hero_title),
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = stringResource(R.string.home_hero_subtitle),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.78f)
                         )
                     }
                 }
 
                 Button(
-                    onClick = {
-                        navigator.navigate(InstallerScreen(latestVersion!!))
-                    },
+                    onClick = onInstall,
                     enabled = latestVersion != null && (prefs.allowDowngrade || latestVersion >= (currentVersion ?: Constants.DUMMY_VERSION)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     val label = when {
                         latestVersion == null -> R.string.msg_loading
-                        currentVersion == null -> R.string.action_install
-                        currentVersion == latestVersion -> R.string.action_reinstall
-                        latestVersion > currentVersion -> R.string.action_update
+                        currentVersion == null -> R.string.action_install_cloudcord
+                        currentVersion == latestVersion -> R.string.action_reinstall_cloudcord
+                        latestVersion > currentVersion -> R.string.action_update_cloudcord
                         else -> if (prefs.allowDowngrade) R.string.msg_downgrade else R.string.msg_downgrade_disallowed
                     }
 
@@ -171,8 +215,87 @@ class HomeScreen : Screen {
                             .fillMaxWidth()
                     )
                 }
+            }
+        }
+    }
 
-                AnimatedVisibility(visible = viewModel.installManager.current != null) {
+    @Composable
+    private fun StatusSection(
+        currentVersion: DiscordVersion?,
+        latestVersion: DiscordVersion?,
+        targetLabel: Int
+    ) {
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.home_status_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    VersionTile(
+                        label = stringResource(R.string.version_current, ""),
+                        value = currentVersion?.toString() ?: stringResource(R.string.home_not_installed),
+                        modifier = Modifier.weight(1f)
+                    )
+                    VersionTile(
+                        label = stringResource(targetLabel, ""),
+                        value = latestVersion?.toString() ?: stringResource(R.string.msg_loading),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun VersionTile(
+        label: String,
+        value: String,
+        modifier: Modifier = Modifier
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = modifier
+        ) {
+            Text(
+                text = label.removeSuffix(": "),
+                style = MaterialTheme.typography.labelMedium,
+                color = LocalContentColor.current.copy(alpha = 0.58f),
+                maxLines = 1,
+                modifier = Modifier.basicMarquee()
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                modifier = Modifier.basicMarquee()
+            )
+        }
+    }
+
+    @Composable
+    private fun QuickActions(viewModel: HomeViewModel) {
+        AnimatedVisibility(visible = viewModel.installManager.current != null) {
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.home_actions_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                         modifier = Modifier.clip(RoundedCornerShape(16.dp))
@@ -194,26 +317,8 @@ class HomeScreen : Screen {
                         )
                     }
                 }
-
-                ElevatedCard(
-                    modifier = Modifier
-                        .fillMaxSize()
-                ) {
-                    CommitList(
-                        commits = viewModel.commits.collectAsLazyPagingItems()
-                    )
-                }
             }
         }
-    }
-
-    @Composable
-    @OptIn(ExperimentalMaterial3Api::class)
-    private fun TitleBar() {
-        TopAppBar(
-            title = { Text(stringResource(R.string.title_home)) },
-            actions = { Actions() }
-        )
     }
 
     @Composable
@@ -230,7 +335,7 @@ class HomeScreen : Screen {
         IconButton(onClick = { navigator.navigate(SettingsScreen()) }) {
             Icon(
                 imageVector = Icons.Outlined.Settings,
-                contentDescription = stringResource(R.string.action_open_about)
+                contentDescription = stringResource(R.string.action_open_settings)
             )
         }
     }

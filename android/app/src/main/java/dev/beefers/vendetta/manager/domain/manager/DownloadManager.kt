@@ -21,13 +21,6 @@ class DownloadManager(
     suspend fun downloadSplit(version: String, split: String, out: File, onProgressUpdate: (Float?) -> Unit): DownloadResult =
         download("${prefs.mirror.baseUrl}/tracker/download/$version/$split", out, onProgressUpdate)
 
-    suspend fun downloadVendetta(out: File, onProgressUpdate: (Float?) -> Unit) =
-        download(
-            "https://github.com/C0C0B01/CloudCordXposed/releases/latest/download/app-release.apk",
-            out,
-            onProgressUpdate
-        )
-
     suspend fun downloadUpdate(out: File) =
         download(
             "https://github.com/C0C0B01/CloudCordManager/releases/latest/download/Manager.apk",

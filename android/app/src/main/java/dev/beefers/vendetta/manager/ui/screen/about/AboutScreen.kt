@@ -133,7 +133,7 @@ class AboutScreen : Screen {
                         LinkItem(
                             icon = R.drawable.ic_github,
                             label = R.string.label_github,
-                            link = "https://github.com/C0C0B01/CloudCord"
+                            link = "https://github.com/xohus/cloudcord"
                         )
 
                         LinkItem(
@@ -151,9 +151,9 @@ class AboutScreen : Screen {
                         .fillMaxWidth()
                         .padding(top = 16.dp, bottom = 20.dp)
                 ) {
-                    UserEntry("Maisy", "Creator\nVendetta", "maisymoe")
+                    UserEntry("Maisy", "Creator\nCloudCord", "maisymoe")
                     UserEntry("cocobo1", "Creator\nCloudCord", "C0C0B01", isLarge = true)
-                    UserEntry("Pylix", "Creator\nBunny", "pylixonly")
+                    UserEntry("Pylix", "Creator\nCloudCord", "pylixonly")
                 }
 
                 Text(
