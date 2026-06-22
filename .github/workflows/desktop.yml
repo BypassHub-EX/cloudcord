@@ -28,40 +28,39 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: stable
+          go-version: "1.23.x"
 
-      - name: Install Windows Go GUI dependencies
+      - name: Install Windows compiler tools
         shell: pwsh
         run: |
           choco install mingw --no-progress -y
+          Add-Content $env:GITHUB_PATH "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
           Add-Content $env:GITHUB_PATH "C:\ProgramData\mingw64\mingw64\bin"
 
-      - name: Prepare real CloudCord Desktop source
-        shell: pwsh
+      - name: Prepare clean Sincord source
+        shell: bash
         run: |
-          if (Test-Path "_sincord") {
-            Remove-Item "_sincord" -Recurse -Force
-          }
+          set -e
 
-          if (Test-Path "desktop/client") {
-            Remove-Item "desktop/client" -Recurse -Force
-          }
+          rm -rf _sincord
+          rm -rf desktop/client
 
-          git clone --depth 1 https://github.com/sincord/sincord _sincord
+          git clone --depth=1 https://github.com/sincord/sincord _sincord
 
-          New-Item -ItemType Directory -Force -Path "desktop/client" | Out-Null
+          mkdir -p desktop/client
+          cp -R _sincord/. desktop/client/
 
-          robocopy "_sincord" "desktop/client" /E /XD ".git" ".github" "node_modules" "dist"
-          if ($LASTEXITCODE -le 7) {
-            $global:LASTEXITCODE = 0
-          } else {
-            exit $LASTEXITCODE
-          }
+          rm -rf desktop/client/.git
+          rm -rf desktop/client/.github
+          rm -rf desktop/client/node_modules
+          rm -rf desktop/client/dist
 
-      - name: Patch Sincord into CloudCord
-        shell: pwsh
+      - name: Patch Sincord source into CloudCord
+        shell: bash
         run: |
-          node - <<'NODE'
+          set -e
+
+          node <<'NODE'
           const fs = require("fs");
           const path = require("path");
 
@@ -70,6 +69,7 @@ jobs:
           const pkgPath = path.join(client, "package.json");
 
           const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+
           pkg.name = "cloudcord";
           pkg.private = "true";
           pkg.version = "0.1.0";
@@ -77,19 +77,24 @@ jobs:
           pkg.homepage = "https://github.com/xohus/cloudcord#readme";
           pkg.author = "Xohus";
           pkg.license = "GPL-3.0-or-later";
-          pkg.bugs = { url: "https://github.com/xohus/cloudcord/issues" };
+          pkg.bugs = {
+            url: "https://github.com/xohus/cloudcord/issues"
+          };
           pkg.repository = {
             type: "git",
             url: "git+https://github.com/xohus/cloudcord.git"
           };
 
-          if (!pkg.scripts) pkg.scripts = {};
+          if (!pkg.scripts) {
+            pkg.scripts = {};
+          }
+
           pkg.scripts.typecheck = "pnpm testTsc";
           pkg.scripts["build:installer"] = "bash scripts/build-installer.sh";
 
           fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 4) + "\n");
 
-          const exts = new Set([
+          const allowedExtensions = new Set([
             ".ts",
             ".tsx",
             ".js",
@@ -110,39 +115,56 @@ jobs:
             ".toml"
           ]);
 
+          function shouldSkipDir(name) {
+            return (
+              name === ".git" ||
+              name === ".github" ||
+              name === "node_modules" ||
+              name === "dist" ||
+              name === ".next" ||
+              name === ".turbo"
+            );
+          }
+
+          function patchFile(file) {
+            const ext = path.extname(file);
+            if (!allowedExtensions.has(ext)) {
+              return;
+            }
+
+            let text;
+            try {
+              text = fs.readFileSync(file, "utf8");
+            } catch {
+              return;
+            }
+
+            const patched = text
+              .replaceAll("Sincord", "CloudCord")
+              .replaceAll("SINCORD", "CLOUDCORD")
+              .replaceAll("Sinlotl", "CloudCordSetup")
+              .replaceAll("The better Discord client mod", "CloudCord desktop client mod")
+              .replaceAll("https://github.com/Sincord/Sincord", "https://github.com/xohus/cloudcord")
+              .replaceAll("git+https://github.com/Sincord/Sincord.git", "git+https://github.com/xohus/cloudcord.git");
+
+            if (patched !== text) {
+              fs.writeFileSync(file, patched);
+            }
+          }
+
           function walk(dir) {
             for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
               const full = path.join(dir, entry.name);
+
               if (entry.isDirectory()) {
-                if (
-                  entry.name === ".git" ||
-                  entry.name === "node_modules" ||
-                  entry.name === "dist" ||
-                  entry.name === ".next"
-                ) continue;
-                walk(full);
+                if (!shouldSkipDir(entry.name)) {
+                  walk(full);
+                }
                 continue;
               }
 
-              if (!exts.has(path.extname(entry.name))) continue;
-
-              let text;
-              try {
-                text = fs.readFileSync(full, "utf8");
-              } catch {
-                continue;
-              }
-
-              const next = text
-                .replaceAll("Sincord", "CloudCord")
-                .replaceAll("SINCORD", "CLOUDCORD")
-                .replaceAll("Sinlotl", "CloudCordSetup")
-                .replaceAll("The better Discord client mod", "CloudCord desktop client mod")
-                .replaceAll("https://github.com/Sincord/Sincord", "https://github.com/xohus/cloudcord")
-                .replaceAll("git+https://github.com/Sincord/Sincord.git", "git+https://github.com/xohus/cloudcord.git");
-
-              if (next !== text) {
-                fs.writeFileSync(full, next);
+              if (entry.isFile()) {
+                patchFile(full);
               }
             }
           }
@@ -183,63 +205,87 @@ jobs:
           );
           NODE
 
-      - name: Verify required build files
-        shell: pwsh
+      - name: Verify required source files
+        shell: bash
         run: |
-          if (-not (Test-Path "desktop/client/scripts/build/build.mjs")) {
-            throw "Missing desktop/client/scripts/build/build.mjs after cloning Sincord"
-          }
+          set -e
 
-          if (-not (Test-Path "desktop/client/scripts/build-installer.sh")) {
-            throw "Missing desktop/client/scripts/build-installer.sh after cloning Sincord"
-          }
+          test -f desktop/client/package.json
+          test -f desktop/client/scripts/build/build.mjs
+          test -f desktop/client/scripts/build-installer.sh
+          test -d desktop/client/installer
+          test -d desktop/client/src
 
-          if (-not (Test-Path "desktop/client/installer")) {
-            throw "Missing desktop/client/installer after cloning Sincord"
-          }
+      - name: Print tool versions
+        shell: bash
+        run: |
+          node --version
+          pnpm --version
+          go version
+          gcc --version || true
 
       - name: Install dependencies
         working-directory: desktop/client
-        run: pnpm install --frozen-lockfile=false
+        shell: bash
+        run: |
+          set -e
+          pnpm install --frozen-lockfile=false
 
       - name: Typecheck
         working-directory: desktop/client
-        run: pnpm typecheck
+        shell: bash
+        run: |
+          set -e
+          pnpm typecheck
 
       - name: Build desktop runtime
         working-directory: desktop/client
-        run: pnpm build
+        shell: bash
+        run: |
+          set -e
+          pnpm build
+
+      - name: Verify desktop runtime output
+        shell: bash
+        run: |
+          set -e
+
+          if [ ! -d "desktop/client/dist/desktop" ]; then
+            echo "desktop/client/dist/desktop was not produced"
+            find desktop/client/dist -maxdepth 3 -type f || true
+            exit 1
+          fi
 
       - name: Build Windows installer
         working-directory: desktop/client
         shell: bash
-        run: pnpm build:installer
+        run: |
+          set -e
+          pnpm build:installer
 
       - name: Stage artifacts
-        shell: pwsh
+        shell: bash
         run: |
-          $installer = Get-ChildItem -Path desktop/client -Recurse -Filter CloudCordSetup.exe | Select-Object -First 1
+          set -e
 
-          if (-not $installer) {
-            $fallback = Get-ChildItem -Path desktop/client -Recurse -Filter "*.exe" | Select-Object -First 1
-            if (-not $fallback) {
-              throw "No installer .exe was produced"
-            }
+          mkdir -p desktop/client/dist
 
-            New-Item -ItemType Directory -Force -Path desktop/client/dist | Out-Null
-            Copy-Item $fallback.FullName desktop/client/dist/CloudCordSetup.exe -Force
-          } else {
-            New-Item -ItemType Directory -Force -Path desktop/client/dist | Out-Null
-            Copy-Item $installer.FullName desktop/client/dist/CloudCordSetup.exe -Force
-          }
+          INSTALLER_PATH="$(find desktop/client -type f -name 'CloudCordSetup.exe' | head -n 1)"
 
-          if (-not (Test-Path desktop/client/dist/desktop)) {
-            throw "desktop/client/dist/desktop was not produced"
-          }
+          if [ -z "$INSTALLER_PATH" ]; then
+            INSTALLER_PATH="$(find desktop/client -type f -name '*.exe' | head -n 1)"
+          fi
 
-          if (-not (Test-Path desktop/client/dist/CloudCordSetup.exe)) {
-            throw "desktop/client/dist/CloudCordSetup.exe was not staged"
-          }
+          if [ -z "$INSTALLER_PATH" ]; then
+            echo "No installer .exe was produced"
+            find desktop/client -maxdepth 5 -type f | sed 's#\\#/#g' | sort | tail -200
+            exit 1
+          fi
+
+          cp "$INSTALLER_PATH" desktop/client/dist/CloudCordSetup.exe
+
+          test -f desktop/client/dist/CloudCordSetup.exe
+          test -d desktop/client/dist/desktop
 
       - name: Upload desktop artifact
         uses: actions/upload-artifact@v4
