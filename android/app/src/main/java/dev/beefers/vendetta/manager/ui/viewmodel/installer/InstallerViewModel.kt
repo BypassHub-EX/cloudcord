@@ -2,6 +2,8 @@ package dev.beefers.vendetta.manager.ui.viewmodel.installer
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -15,10 +17,12 @@ import dev.beefers.vendetta.manager.domain.manager.InstallManager
 import dev.beefers.vendetta.manager.installer.step.Step
 import dev.beefers.vendetta.manager.installer.step.StepGroup
 import dev.beefers.vendetta.manager.installer.step.StepRunner
+import dev.beefers.vendetta.manager.utils.copyText
 import dev.beefers.vendetta.manager.utils.DiscordVersion
 import dev.beefers.vendetta.manager.utils.showToast
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.toImmutableMap
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -29,35 +33,32 @@ import java.util.concurrent.atomic.AtomicBoolean
 class InstallerViewModel(
     private val context: Context,
     private val installManager: InstallManager,
-    discordVersion: DiscordVersion
+    private val discordVersion: DiscordVersion
 ) : ScreenModel {
 
-    val runner = StepRunner(discordVersion)
+    var runner by mutableStateOf(StepRunner(discordVersion))
+        private set
 
-    val groupedSteps: ImmutableMap<StepGroup, List<Step>> = StepGroup.entries
-        .associateWith { group ->
-            runner.steps.filter { step -> step.group == group }
-        }
-        .toImmutableMap()
+    val groupedSteps: ImmutableMap<StepGroup, List<Step>>
+        get() = StepGroup.entries
+            .associateWith { group ->
+                runner.steps.filter { step -> step.group == group }
+            }
+            .toImmutableMap()
 
     private val tempLogStorageDir = context.filesDir.resolve("logsTmp").also {
         it.mkdirs()
     }
 
-    private val logsString by lazy {
-        runner.logger.logs.joinToString("\n") { it.toString() }
-    }
+    private val logsString: String
+        get() = runner.logger.logs.joinToString("\n") { it.toString() }
 
     private val installationRunning = AtomicBoolean(false)
 
-    private val job = screenModelScope.launch(Dispatchers.Main) {
-        if (installationRunning.getAndSet(true)) {
-            return@launch
-        }
+    private var job: Job? = null
 
-        withContext(Dispatchers.IO) {
-            runner.runAll()
-        }
+    init {
+        startInstall()
     }
 
     var backDialogOpened by mutableStateOf(false)
@@ -103,7 +104,81 @@ class InstallerViewModel(
 
     fun cancelInstall() {
         runCatching {
-            job.cancel("User exited the installer")
+            job?.cancel("User exited the installer")
+        }
+    }
+
+    fun retryInstall() {
+        cancelInstall()
+        runner = StepRunner(discordVersion)
+        startInstall()
+    }
+
+    fun importDiscordApk(uri: Uri?) {
+        if (uri == null) return
+
+        screenModelScope.launch {
+            val imported = withContext(Dispatchers.IO) {
+                copyImportToAppStorage(uri)
+            }
+
+            if (imported == null) {
+                context.showToast(R.string.msg_invalid_discord_apk)
+                return@launch
+            }
+
+            cancelInstall()
+            runner = StepRunner(discordVersion, manualDiscordSource = imported)
+            startInstall()
+        }
+    }
+
+    fun copyLogs() {
+        val logText = if (runner.logFile.exists()) runner.logFile.readText() else logsString
+        context.copyText(logText)
+        context.showToast(R.string.msg_copied)
+    }
+
+    private fun startInstall() {
+        installationRunning.set(false)
+        job = screenModelScope.launch(Dispatchers.Main) {
+            if (installationRunning.getAndSet(true)) {
+                return@launch
+            }
+
+            withContext(Dispatchers.IO) {
+                runner.runAll()
+            }
+        }
+    }
+
+    private fun copyImportToAppStorage(uri: Uri): File? {
+        val fileName = queryFileName(uri) ?: uri.lastPathSegment ?: return null
+        val extension = fileName.substringAfterLast('.', "").lowercase()
+        if (extension !in setOf("apk", "apkm", "apks", "xapk")) {
+            return null
+        }
+
+        val importDir = context.filesDir.resolve("manual-discord-import").also {
+            it.deleteRecursively()
+            it.mkdirs()
+        }
+        val out = importDir.resolve("discord-source.$extension")
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                out.outputStream().use { output -> input.copyTo(output) }
+            } ?: return null
+
+            out.takeIf { it.exists() && it.canRead() && it.length() > 0 }
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    private fun queryFileName(uri: Uri): String? {
+        return context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (nameIndex >= 0 && cursor.moveToFirst()) cursor.getString(nameIndex) else null
         }
     }
 

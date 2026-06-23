@@ -20,5 +20,7 @@ class DownloadBaseStep(
     override val url: String = "$baseUrl/tracker/download/$version/base"
     override val destination = dir.resolve("base-$version.apk")
     override val workingCopy = workingDir.resolve("base-$version.apk")
+    override val failureLabel = "base APK"
+    override val importsManualDiscordSource = true
 
 }

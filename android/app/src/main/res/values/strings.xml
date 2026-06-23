@@ -22,6 +22,7 @@
     <string name="msg_download_cancelled">Download was aborted</string>
     <string name="msg_download_failed">Download failed</string>
     <string name="msg_download_verify_failed">Could not verify downloaded file, check logs for more details</string>
+    <string name="msg_invalid_discord_apk">Invalid Discord APK/APKM file</string>
     <string name="msg_copied">Copied to clipboard</string>
 
     <string name="group_download">Download APKs</string>
@@ -52,15 +53,16 @@
     <string name="install_fail_incompatible">Application is incompatible with this device</string>
     <string name="install_fail_timeout">Installation timed out</string>
 
-    <string name="status_ongoing">Ongoing</string>
-    <string name="status_successful">Successful</string>
+    <string name="status_ongoing">Running</string>
+    <string name="status_successful">Success</string>
     <string name="status_fail">Failed</string>
-    <string name="status_queued">Queued</string>
+    <string name="status_queued">Pending</string>
 
     <string name="action_collapse">Collapse</string>
     <string name="action_expand">Expand</string>
     <string name="action_back">Go back</string>
     <string name="action_copy_logs">Copy logs</string>
+    <string name="action_import_discord_apk">Import Discord APK/APKM</string>
     <string name="action_clear_cache">Clear cache</string>
     <string name="action_confirm">Confirm</string>
     <string name="action_start_update">Start update</string>
@@ -110,6 +112,7 @@
     <string name="title_update_available">New Discord update available!</string>
     <string name="title_warning">Warning</string>
     <string name="title_dl_failed">Download failed</string>
+    <string name="title_installer_failed">Installer failed</string>
     <string name="title_logs">Logs</string>
     <string name="title_os_libraries">Open source libraries</string>
     <string name="title_libraries">Libraries</string>

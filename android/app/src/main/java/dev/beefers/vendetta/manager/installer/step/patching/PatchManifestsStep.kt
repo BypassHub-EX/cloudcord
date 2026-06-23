@@ -7,10 +7,6 @@ import dev.beefers.vendetta.manager.domain.manager.PreferenceManager
 import dev.beefers.vendetta.manager.installer.step.Step
 import dev.beefers.vendetta.manager.installer.step.StepGroup
 import dev.beefers.vendetta.manager.installer.step.StepRunner
-import dev.beefers.vendetta.manager.installer.step.download.DownloadBaseStep
-import dev.beefers.vendetta.manager.installer.step.download.DownloadLangStep
-import dev.beefers.vendetta.manager.installer.step.download.DownloadLibsStep
-import dev.beefers.vendetta.manager.installer.step.download.DownloadResourcesStep
 import dev.beefers.vendetta.manager.installer.util.ManifestPatcher
 import org.koin.core.component.inject
 
@@ -25,12 +21,12 @@ class PatchManifestsStep : Step() {
     override val nameRes = R.string.step_patch_manifests
 
     override suspend fun run(runner: StepRunner) {
-        val baseApk = runner.getCompletedStep<DownloadBaseStep>().workingCopy
-        val libsApk = runner.getCompletedStep<DownloadLibsStep>().workingCopy
-        val langApk = runner.getCompletedStep<DownloadLangStep>().workingCopy
-        val resApk = runner.getCompletedStep<DownloadResourcesStep>().workingCopy
+        val apks = runner.discordApks
+            .takeIf { it.isNotEmpty() }
+            ?: throw IllegalStateException("No Discord APKs are available for patching")
+        val baseApk = apks.first()
 
-        arrayOf(baseApk, libsApk, langApk, resApk).forEach { apk ->
+        apks.forEach { apk ->
             runner.logger.i("Reading AndroidManifest.xml from ${apk.name}")
             val manifest = ZipReader(apk)
                 .use { zip -> zip.openEntry("AndroidManifest.xml")?.read() }
@@ -53,13 +49,14 @@ class PatchManifestsStep : Step() {
                 runner.logger.i("Deleting old AndroidManifest.xml in ${apk.name}")
                 zip.deleteEntry(
                     "AndroidManifest.xml",
-                    /* fillVoid = */ apk == libsApk || apk == baseApk
+                    /* fillVoid = */ apk == baseApk || apk.name.contains("config.", ignoreCase = true)
                 ) // Preserve alignment in libs apk
 
                 runner.logger.i("Adding patched AndroidManifest.xml in ${apk.name}")
                 zip.writeEntry("AndroidManifest.xml", patchedManifestBytes)
             }
         }
+        runner.logger.i("Patching result: patched ${apks.size} manifest(s)")
     }
 
 }

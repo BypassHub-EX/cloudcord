@@ -8,7 +8,6 @@ import dev.beefers.vendetta.manager.domain.manager.PreferenceManager
 import dev.beefers.vendetta.manager.installer.step.Step
 import dev.beefers.vendetta.manager.installer.step.StepGroup
 import dev.beefers.vendetta.manager.installer.step.StepRunner
-import dev.beefers.vendetta.manager.installer.step.download.DownloadBaseStep
 import dev.beefers.vendetta.manager.installer.util.ArscUtil
 import dev.beefers.vendetta.manager.installer.util.ArscUtil.addColorResource
 import dev.beefers.vendetta.manager.installer.util.ArscUtil.getMainArscChunk
@@ -31,7 +30,8 @@ class ReplaceIconStep : Step() {
     override val nameRes = R.string.step_change_icon
 
     override suspend fun run(runner: StepRunner) {
-        val baseApk = runner.getCompletedStep<DownloadBaseStep>().workingCopy
+        val baseApk = runner.discordApks.firstOrNull()
+            ?: throw IllegalStateException("No Discord base APK is available for icon patching")
 
         runner.logger.i("Reading resources.arsc")
         val arsc = ArscUtil.readArsc(baseApk)

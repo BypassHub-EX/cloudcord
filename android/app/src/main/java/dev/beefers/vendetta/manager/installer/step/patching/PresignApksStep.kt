@@ -8,10 +8,6 @@ import dev.beefers.vendetta.manager.R
 import dev.beefers.vendetta.manager.installer.step.Step
 import dev.beefers.vendetta.manager.installer.step.StepGroup
 import dev.beefers.vendetta.manager.installer.step.StepRunner
-import dev.beefers.vendetta.manager.installer.step.download.DownloadBaseStep
-import dev.beefers.vendetta.manager.installer.step.download.DownloadLangStep
-import dev.beefers.vendetta.manager.installer.step.download.DownloadLibsStep
-import dev.beefers.vendetta.manager.installer.step.download.DownloadResourcesStep
 import dev.beefers.vendetta.manager.installer.util.Signer
 import java.io.File
 
@@ -28,14 +24,11 @@ class PresignApksStep(
     override val nameRes = R.string.step_signing
 
     override suspend fun run(runner: StepRunner) {
-        val baseApk = runner.getCompletedStep<DownloadBaseStep>().workingCopy
-        val libsApk = runner.getCompletedStep<DownloadLibsStep>().workingCopy
-        val langApk = runner.getCompletedStep<DownloadLangStep>().workingCopy
-        val resApk = runner.getCompletedStep<DownloadResourcesStep>().workingCopy
-
         runner.logger.i("Creating dir for signed apks: ${signedDir.absolutePath}")
         signedDir.mkdirs()
-        val apks = listOf(baseApk, libsApk, langApk, resApk)
+        val apks = runner.discordApks
+            .takeIf { it.isNotEmpty() }
+            ?: throw IllegalStateException("No Discord APKs are available for signing")
 
         // Align resources.arsc due to targeting api 30 for silent install
         if(Build.VERSION.SDK_INT >= 30) {
@@ -63,6 +56,7 @@ class PresignApksStep(
             runner.logger.i("Signing ${it.name}")
             Signer.signApk(it, File(signedDir, it.name))
         }
+        runner.logger.i("Patching result: signed ${apks.size} APK(s)")
     }
 
 }

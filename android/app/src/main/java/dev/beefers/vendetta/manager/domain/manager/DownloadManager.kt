@@ -1,17 +1,18 @@
 package dev.beefers.vendetta.manager.domain.manager
 
-import android.app.DownloadManager
-import android.content.Context
-import android.database.Cursor
-import android.net.Uri
-import androidx.core.content.getSystemService
+import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.request.prepareGet
+import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsChannel
+import io.ktor.http.isSuccess
+import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import java.io.File
+import java.net.SocketTimeoutException
 
 class DownloadManager(
-    private val context: Context,
+    private val httpClient: HttpClient,
     private val prefs: PreferenceManager
 ) {
 
@@ -30,107 +31,85 @@ class DownloadManager(
         }
 
     /**
-     * Start a cancellable download with the system [DownloadManager].
-     * If the current [CoroutineScope] is cancelled, then the system download will be cancelled
-     * almost immediately.
+     * Start a cancellable download with explicit client timeouts.
      * @param url Remote src url
      * @param out Target path to download to
      * @param onProgressUpdate Download progress update in a `[0,1]` range, and if null then the
-     *                         download is currently in a pending state. This is called every 100ms.
+     *                         total size is unknown.
      */
     suspend fun download(
         url: String,
         out: File,
         onProgressUpdate: (Float?) -> Unit
     ): DownloadResult {
-        val downloadManager = context.getSystemService<DownloadManager>()
-            ?: throw IllegalStateException("DownloadManager service is not available")
+        return try {
+            out.parentFile?.mkdirs()
+            var bytesDownloaded = 0L
 
-        val downloadId = DownloadManager.Request(Uri.parse(url))
-            .setTitle("CloudCord Manager")
-            .setDescription("Downloading ${out.name}...")
-            .setDestinationUri(Uri.fromFile(out))
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
-            .setAllowedOverMetered(true)
-            .setAllowedOverRoaming(true)
-            .let(downloadManager::enqueue)
+            httpClient.prepareGet(url).execute { response: HttpResponse ->
+                val statusCode = response.status.value
+                if (!response.status.isSuccess()) {
+                    return@execute DownloadResult.Error(
+                        url = url,
+                        httpStatusCode = statusCode,
+                        exceptionMessage = response.status.description,
+                        bytesDownloaded = bytesDownloaded,
+                    )
+                }
 
-        // Repeatedly request download state until it is finished
-        while (true) {
-            try {
-                // Hand over control to a suspend function to check for cancellation
-                delay(100)
-            } catch (_: CancellationException) {
-                // If the running CoroutineScope has been cancelled, then gracefully cancel download
-                downloadManager.remove(downloadId)
-                return DownloadResult.Cancelled(systemTriggered = false)
-            }
+                val totalBytes = response.headers["Content-Length"]?.toLongOrNull()
+                val channel = response.bodyAsChannel()
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
 
-            // Request download status
-            val cursor = DownloadManager.Query()
-                .setFilterById(downloadId)
-                .let(downloadManager::query)
-
-            // No results in cursor, download was cancelled
-            if (!cursor.moveToFirst()) {
-                cursor.close()
-                return DownloadResult.Cancelled(systemTriggered = true)
-            }
-
-            val statusColumn = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-            val status = cursor.getInt(statusColumn)
-
-            cursor.use {
-                when (status) {
-                    DownloadManager.STATUS_PENDING, DownloadManager.STATUS_PAUSED ->
-                        onProgressUpdate(null)
-
-                    DownloadManager.STATUS_RUNNING ->
-                        onProgressUpdate(getDownloadProgress(cursor))
-
-                    DownloadManager.STATUS_SUCCESSFUL ->
-                        return DownloadResult.Success
-
-                    DownloadManager.STATUS_FAILED -> {
-                        val reasonColumn = cursor.getColumnIndex(DownloadManager.COLUMN_REASON)
-                        val reason = cursor.getInt(reasonColumn)
-
-                        return DownloadResult.Error(debugReason = convertErrorCode(reason))
+                out.outputStream().use { output ->
+                    while (true) {
+                        val read = channel.readAvailable(buffer)
+                        if (read == -1) break
+                        output.write(buffer, 0, read)
+                        bytesDownloaded += read
+                        onProgressUpdate(totalBytes?.takeIf { it > 0 }?.let {
+                            bytesDownloaded.toFloat() / it
+                        })
                     }
                 }
+
+                DownloadResult.Success(
+                    httpStatusCode = statusCode,
+                    bytesDownloaded = bytesDownloaded,
+                )
             }
+        } catch (e: CancellationException) {
+            out.delete()
+            DownloadResult.Cancelled(systemTriggered = false)
+        } catch (t: Throwable) {
+            out.delete()
+            DownloadResult.Error(
+                url = url,
+                httpStatusCode = null,
+                exceptionMessage = t.message ?: t::class.java.simpleName,
+                bytesDownloaded = out.length(),
+                stacktrace = t.stackTraceToString(),
+                timedOut = t is HttpRequestTimeoutException || t is SocketTimeoutException,
+            )
         }
-    }
-
-    private fun getDownloadProgress(queryCursor: Cursor): Float? {
-        val bytesColumn = queryCursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
-        val bytes = queryCursor.getLong(bytesColumn)
-
-        val totalBytesColumn = queryCursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
-        val totalBytes = queryCursor.getLong(totalBytesColumn)
-
-        if (totalBytes <= 0) return null
-        return bytes.toFloat() / totalBytes
-    }
-
-    private fun convertErrorCode(code: Int) = when (code) {
-        DownloadManager.ERROR_UNKNOWN -> "UNKNOWN"
-        DownloadManager.ERROR_FILE_ERROR -> "FILE_ERROR"
-        DownloadManager.ERROR_UNHANDLED_HTTP_CODE -> "UNHANDLED_HTTP_CODE"
-        DownloadManager.ERROR_HTTP_DATA_ERROR -> "HTTP_DATA_ERROR"
-        DownloadManager.ERROR_TOO_MANY_REDIRECTS -> "TOO_MANY_REDIRECTS"
-        DownloadManager.ERROR_INSUFFICIENT_SPACE -> "INSUFFICIENT_SPACE"
-        DownloadManager.ERROR_DEVICE_NOT_FOUND -> "DEVICE_NOT_FOUND"
-        DownloadManager.ERROR_CANNOT_RESUME -> "CANNOT_RESUME"
-        DownloadManager.ERROR_FILE_ALREADY_EXISTS -> "FILE_ALREADY_EXISTS"
-        /* DownloadManager.ERROR_BLOCKED */ 1010 -> "NETWORK_BLOCKED"
-        else -> "UNKNOWN_CODE"
     }
 
 }
 
 sealed interface DownloadResult {
-    data object Success : DownloadResult
+    data class Success(
+        val httpStatusCode: Int,
+        val bytesDownloaded: Long,
+    ) : DownloadResult
+
     data class Cancelled(val systemTriggered: Boolean) : DownloadResult
-    data class Error(val debugReason: String) : DownloadResult
+
+    data class Error(
+        val url: String,
+        val httpStatusCode: Int?,
+        val exceptionMessage: String,
+        val bytesDownloaded: Long,
+        val stacktrace: String? = null,
+        val timedOut: Boolean = false,
+    ) : DownloadResult
 }

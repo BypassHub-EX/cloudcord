@@ -3,6 +3,9 @@ package dev.beefers.vendetta.manager.ui.screen.installer
 import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -31,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
@@ -42,7 +47,6 @@ import dev.beefers.vendetta.manager.domain.manager.PreferenceManager
 import dev.beefers.vendetta.manager.installer.step.StepStatus
 import dev.beefers.vendetta.manager.ui.viewmodel.installer.InstallerViewModel
 import dev.beefers.vendetta.manager.ui.widgets.dialog.BackWarningDialog
-import dev.beefers.vendetta.manager.ui.widgets.dialog.DownloadFailedDialog
 import dev.beefers.vendetta.manager.ui.widgets.installer.StepGroupCard
 import dev.beefers.vendetta.manager.utils.DiscordVersion
 import okhttp3.internal.toImmutableList
@@ -63,6 +67,10 @@ class InstallerScreen(
         val viewModel: InstallerViewModel = koinScreenModel {
             parametersOf(version)
         }
+        val importLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument(),
+            onResult = viewModel::importDiscordApk
+        )
 
         LaunchedEffect(viewModel.runner.currentStep) {
             viewModel.expandGroup(viewModel.runner.currentStep?.group)
@@ -100,19 +108,6 @@ class InstallerScreen(
             )
         }
 
-        if(viewModel.runner.downloadErrored) {
-            DownloadFailedDialog(
-                onTryAgainClick = {
-                    viewModel.dismissDownloadFailedDialog()
-                    viewModel.cancelInstall()
-                    nav.replace(InstallerScreen(version))
-                },
-                onDismiss = {
-                    viewModel.dismissDownloadFailedDialog()
-                }
-            )
-        }
-
         Scaffold(
             topBar = {
                 TitleBar(
@@ -132,6 +127,32 @@ class InstallerScreen(
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState())
             ) {
+                InstallerStatus(viewModel)
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                FilledTonalButton(
+                    onClick = { importLauncher.launch(arrayOf("*/*")) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.action_import_discord_apk))
+                }
+
+                viewModel.runner.failure?.let { failure ->
+                    Spacer(modifier = Modifier.height(12.dp))
+                    InstallerFailurePanel(
+                        title = failure.title,
+                        details = failure.details,
+                        onRetryClick = {
+                            viewModel.dismissDownloadFailedDialog()
+                            viewModel.retryInstall()
+                        },
+                        onCopyLogsClick = viewModel::copyLogs,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 for ((group, steps) in viewModel.groupedSteps) {
                     key(group) {
                         StepGroupCard(
@@ -165,10 +186,10 @@ class InstallerScreen(
                             .fillMaxWidth()
                     ) {
                         FilledTonalButton(
-                            onClick = { viewModel.shareLogs(activity!!) },
+                            onClick = { viewModel.copyLogs() },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(stringResource(R.string.action_share_logs))
+                            Text(stringResource(R.string.action_copy_logs))
                         }
 
                         FilledTonalButton(
@@ -178,6 +199,83 @@ class InstallerScreen(
                             Text(stringResource(R.string.action_clear_cache))
                         }
                     }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun InstallerStatus(viewModel: InstallerViewModel) {
+        val step = viewModel.runner.currentStep
+        val statusText = when (step?.status) {
+            StepStatus.ONGOING -> stringResource(R.string.status_ongoing)
+            StepStatus.SUCCESSFUL -> stringResource(R.string.status_successful)
+            StepStatus.UNSUCCESSFUL -> stringResource(R.string.status_fail)
+            StepStatus.QUEUED, null -> stringResource(R.string.status_queued)
+        }
+        val progressText = step?.progress?.let { " ${(it * 100).toInt()}%" }.orEmpty()
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = step?.let { stringResource(it.nameRes) } ?: stringResource(R.string.title_installer),
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "$statusText$progressText",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            )
+        }
+    }
+
+    @Composable
+    private fun InstallerFailurePanel(
+        title: String,
+        details: String,
+        onRetryClick: () -> Unit,
+        onCopyLogsClick: () -> Unit,
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f),
+                    shape = MaterialTheme.shapes.small,
+                )
+                .padding(12.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+            Text(
+                text = details,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 8,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Button(
+                    onClick = onRetryClick,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.action_retry))
+                }
+                FilledTonalButton(
+                    onClick = onCopyLogsClick,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.action_copy_logs))
                 }
             }
         }

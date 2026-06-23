@@ -49,6 +49,9 @@ abstract class DownloadStep: Step() {
      */
     abstract val workingCopy: File
 
+    protected open val failureLabel: String = "APK"
+    protected open val importsManualDiscordSource: Boolean = false
+
     override val group: StepGroup = StepGroup.DL
 
     var cached by mutableStateOf(false)
@@ -67,6 +70,17 @@ abstract class DownloadStep: Step() {
 
     override suspend fun run(runner: StepRunner) {
         val fileName = destination.name
+        if (runner.manualDiscordSource != null) {
+            if (importsManualDiscordSource) {
+                runner.importManualDiscordSource()
+                progress = 1f
+            } else {
+                runner.logger.i("Skipping $fileName download because a manual Discord source was imported")
+                progress = 1f
+            }
+            return
+        }
+
         runner.logger.i("Checking if $fileName is cached")
         if (destination.exists()) {
             runner.logger.i("Checking if $fileName isn't empty")
@@ -76,6 +90,7 @@ abstract class DownloadStep: Step() {
 
                 runner.logger.i("Moving $fileName to working directory")
                 destination.copyTo(workingCopy, true)
+                runner.registerDiscordApk(workingCopy)
 
                 status = StepStatus.SUCCESSFUL
                 return
@@ -86,6 +101,9 @@ abstract class DownloadStep: Step() {
         }
 
         runner.logger.i("$fileName was not properly cached, downloading now")
+        runner.logger.i("Download URL: $url")
+        runner.logger.i("Download destination: ${destination.absolutePath}")
+        runner.logger.i("Download start: $fileName")
         var lastProgress: Float? = null
         val result = downloadManager.download(url, destination) { newProgress ->
             progress = newProgress
@@ -97,6 +115,9 @@ abstract class DownloadStep: Step() {
 
         when (result) {
             is DownloadResult.Success -> {
+                runner.logger.i("Download end: $fileName")
+                runner.logger.i("HTTP status code: ${result.httpStatusCode}")
+                runner.logger.i("Bytes downloaded: ${result.bytesDownloaded}")
                 try {
                     runner.logger.i("Verifying downloaded file")
                     verify()
@@ -110,15 +131,32 @@ abstract class DownloadStep: Step() {
                 }
                 runner.logger.i("Moving $fileName to working directory")
                 destination.copyTo(workingCopy, true)
+                runner.registerDiscordApk(workingCopy)
             }
 
             is DownloadResult.Error -> {
+                val status = result.httpStatusCode?.toString() ?: "unavailable"
+                val message = buildString {
+                    append("Failed to download $failureLabel")
+                    append("\nURL: ${result.url}")
+                    append("\nHTTP status: $status")
+                    append("\nException: ${result.exceptionMessage}")
+                }
+
+                runner.logger.e("Failed to download $failureLabel")
+                runner.logger.e("URL attempted: ${result.url}")
+                runner.logger.e("HTTP status code: $status")
+                runner.logger.e("Bytes downloaded: ${result.bytesDownloaded}")
+                if (result.timedOut) runner.logger.e("Timeout error")
+                runner.logger.e("Exception message: ${result.exceptionMessage}")
+                result.stacktrace?.let { runner.logger.e(it) }
+
                 mainThread {
                     context.showToast(R.string.msg_download_failed)
                     runner.downloadErrored = true
                 }
 
-                throw Error("Failed to download: ${result.debugReason}")
+                throw DownloadStepException(message)
             }
 
             is DownloadResult.Cancelled -> {
@@ -129,3 +167,5 @@ abstract class DownloadStep: Step() {
     }
 
 }
+
+class DownloadStepException(message: String) : Exception(message)

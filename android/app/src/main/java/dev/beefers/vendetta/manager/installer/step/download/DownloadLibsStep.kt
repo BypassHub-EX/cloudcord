@@ -26,5 +26,6 @@ class DownloadLibsStep(
     override val url: String = "$baseUrl/tracker/download/$version/config.$arch"
     override val destination = dir.resolve("config.$arch-$version.apk")
     override val workingCopy = workingDir.resolve("config.$arch-$version.apk")
+    override val failureLabel = "libraries APK"
 
 }

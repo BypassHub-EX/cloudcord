@@ -26,31 +26,39 @@ class DownloadVendettaStep(
 
     override suspend fun run(runner: StepRunner) {
         runner.logger.i("Copying bundled CloudCord module")
+        runner.logger.i("Download URL: bundled asset cloudcord-module.apk")
         destination.parentFile?.mkdirs()
         workingCopy.parentFile?.mkdirs()
 
-        context.assets.open("cloudcord-module.apk").use { input ->
-            destination.outputStream().use { output ->
-                input.copyTo(output)
+        try {
+            context.assets.open("cloudcord-module.apk").use { input ->
+                destination.outputStream().use { output ->
+                    input.copyTo(output)
+                }
             }
-        }
 
-        if (!destination.exists()) {
-            error("Bundled module copy is missing: ${destination.absolutePath}")
-        }
+            if (!destination.exists()) {
+                error("Bundled module copy is missing: ${destination.absolutePath}")
+            }
 
-        if (destination.length() <= 0) {
-            error("Bundled module copy is empty: ${destination.absolutePath}")
-        }
+            if (destination.length() <= 0) {
+                error("Bundled module copy is empty: ${destination.absolutePath}")
+            }
 
-        destination.copyTo(workingCopy, overwrite = true)
+            runner.logger.i("Bytes downloaded: ${destination.length()}")
+            runner.logger.i("Destination file path: ${destination.absolutePath}")
+            destination.copyTo(workingCopy, overwrite = true)
 
-        if (!workingCopy.exists()) {
-            error("Working module copy is missing: ${workingCopy.absolutePath}")
-        }
+            if (!workingCopy.exists()) {
+                error("Working module copy is missing: ${workingCopy.absolutePath}")
+            }
 
-        if (workingCopy.length() <= 0) {
-            error("Working module copy is empty: ${workingCopy.absolutePath}")
+            if (workingCopy.length() <= 0) {
+                error("Working module copy is empty: ${workingCopy.absolutePath}")
+            }
+        } catch (t: Throwable) {
+            runner.logger.e("Failed to prepare CloudCord module", t)
+            throw Exception("Failed to download CloudCord module\nException: ${t.message}", t)
         }
 
         progress = 1f

@@ -28,6 +28,8 @@ import kotlinx.coroutines.delay
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
+import java.time.Instant
+import java.util.zip.ZipInputStream
 
 /**
  * Runs all installation steps in order
@@ -38,7 +40,8 @@ import java.io.File
  */
 @Stable
 class StepRunner(
-    private val discordVersion: DiscordVersion
+    private val discordVersion: DiscordVersion,
+    val manualDiscordSource: File? = null,
 ): KoinComponent {
 
     private val preferenceManager: PreferenceManager by inject()
@@ -47,21 +50,29 @@ class StepRunner(
             CloudCord Manager v${BuildConfig.VERSION_NAME}
             Built from commit ${BuildConfig.GIT_COMMIT} on ${BuildConfig.GIT_BRANCH} ${if (BuildConfig.GIT_LOCAL_CHANGES || BuildConfig.GIT_LOCAL_COMMITS) "(Changes Present)" else ""}
             
+            Installer start time: ${Instant.now()}
             Running Android ${Build.VERSION.RELEASE}, API level ${Build.VERSION.SDK_INT}
             Supported ABIs: ${Build.SUPPORTED_ABIS.joinToString()}
             Device: ${Build.MANUFACTURER} - ${Build.MODEL} (${Build.DEVICE})
             ${if(Build.VERSION.SDK_INT > Build.VERSION_CODES.S) "SOC: ${Build.SOC_MANUFACTURER} ${Build.SOC_MODEL}\n" else "\n\n"} 
             Adding CloudCord to Discord v$discordVersion
+            Discord source: ${manualDiscordSource?.absolutePath ?: "automatic download"}
             
             
         """.trimIndent()
 
+    val logFile: File = context.filesDir.resolve("cloudcord-installer.log").also {
+        it.parentFile?.mkdirs()
+        it.writeText("")
+    }
+
     /**
      * Logger associated with this runner
      */
-    val logger = Logger("StepRunner").also { logger ->
+    val logger = Logger("StepRunner", logFile).also { logger ->
         debugInfo.split("\n").forEach {
             logger.logs += LogEntry(it, LogEntry.Level.INFO) // Add debug information to logs but don't print to logcat
+            logFile.appendText(LogEntry(it, LogEntry.Level.INFO).toString() + "\n")
         }
     }
 
@@ -108,6 +119,15 @@ class StepRunner(
      * Whether or not a download step failed, this is only for errors related to network conditions and not cancellations
      */
     var downloadErrored by mutableStateOf(false)
+
+    var failure by mutableStateOf<InstallerFailure?>(null)
+        private set
+
+    private var manualDiscordImported = false
+    private val mutableDiscordApks = mutableListOf<File>()
+
+    val discordApks: List<File>
+        get() = mutableDiscordApks.toList()
 
     /**
      * List of steps to go through for this install
@@ -156,6 +176,53 @@ class StepRunner(
         cacheDir.deleteRecursively()
     }
 
+    fun registerDiscordApk(file: File) {
+        if (mutableDiscordApks.none { it.absolutePath == file.absolutePath }) {
+            mutableDiscordApks += file
+        }
+    }
+
+    fun importManualDiscordSource() {
+        if (manualDiscordImported) return
+
+        val source = manualDiscordSource
+            ?: throw IllegalStateException("No manual Discord source is configured")
+
+        logger.i("Importing manual Discord source: ${source.absolutePath}")
+        if (!source.exists() || !source.canRead() || source.length() <= 0) {
+            throw IllegalArgumentException("Invalid Discord APK/APKM file")
+        }
+
+        patchedDir.mkdirs()
+        val extension = source.extension.lowercase()
+        if (extension == "apk") {
+            val out = patchedDir.resolve(source.name.ifBlank { "manual-discord.apk" })
+            source.copyTo(out, overwrite = true)
+            logger.i("Imported manual APK to ${out.absolutePath} (${out.length()} bytes)")
+            registerDiscordApk(out)
+        } else {
+            ZipInputStream(source.inputStream().buffered()).use { zip ->
+                while (true) {
+                    val entry = zip.nextEntry ?: break
+                    if (!entry.isDirectory && entry.name.endsWith(".apk", ignoreCase = true)) {
+                        val name = File(entry.name).name.ifBlank { "split-${mutableDiscordApks.size}.apk" }
+                        val out = patchedDir.resolve(name)
+                        out.outputStream().use { output -> zip.copyTo(output) }
+                        logger.i("Imported manual split ${entry.name} to ${out.absolutePath} (${out.length()} bytes)")
+                        registerDiscordApk(out)
+                    }
+                    zip.closeEntry()
+                }
+            }
+        }
+
+        if (mutableDiscordApks.isEmpty()) {
+            throw IllegalArgumentException("Invalid Discord APK/APKM file")
+        }
+
+        manualDiscordImported = true
+    }
+
     /**
      * Run all the [steps] in order
      */
@@ -167,6 +234,10 @@ class StepRunner(
             val error = step.runCatching(this)
             if (error != null) {
                 logger.e("Failed on ${step::class.simpleName}", error)
+                failure = InstallerFailure(
+                    title = error.message ?: "Installer failed",
+                    details = error.stackTraceToString().trim(),
+                )
 
                 completed = true
                 return error
@@ -175,7 +246,7 @@ class StepRunner(
             // Add delay for human psychology and
             // better group visibility in UI (the active group can change way too fast)
             if (!preferenceManager.isDeveloper && step.durationMs < 1000) {
-                delay(100L - step.durationMs)
+                delay(1000L - step.durationMs)
             }
         }
 
@@ -184,3 +255,8 @@ class StepRunner(
     }
 
 }
+
+data class InstallerFailure(
+    val title: String,
+    val details: String,
+)

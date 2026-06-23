@@ -36,6 +36,7 @@ class AddVendettaStep(
             apkPaths = files.map { it.absolutePath },
             embeddedModules = listOf(vendetta.absolutePath)
         )
+        runner.logger.i("Patching result: LSPatch completed for ${files.size} APK(s)")
     }
 
 }

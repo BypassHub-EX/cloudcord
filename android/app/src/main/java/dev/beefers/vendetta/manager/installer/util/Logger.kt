@@ -3,6 +3,7 @@ package dev.beefers.vendetta.manager.installer.util
 import android.util.Log
 import androidx.compose.runtime.Stable
 import org.lsposed.patch.util.Logger
+import java.io.File
 
 /**
  * Used to log events done during the patching process
@@ -11,7 +12,8 @@ import org.lsposed.patch.util.Logger
  */
 @Stable
 class Logger(
-    private val tag: String
+    private val tag: String,
+    private val file: File? = null,
 ): Logger() {
 
     /**
@@ -58,7 +60,9 @@ class Logger(
     private fun log(msg: String?, level: LogEntry.Level) {
         msg?.let {
             msg.split("\n").forEach {
-                logs += LogEntry(it, level)
+                val entry = LogEntry(it, level)
+                logs += entry
+                file?.appendText(entry.toString() + "\n")
             }
         }
     }
